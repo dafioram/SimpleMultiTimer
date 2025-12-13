@@ -9,10 +9,19 @@ import datetime
 
 app = Flask(__name__)
 
-# Ensure the instance folder exists for the database
-db_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'timers.db')
+# --- NEW PATH LOGIC ---
+# 1. Define the folder and file path
+base_dir = os.path.abspath(os.path.dirname(__file__))
+data_dir = os.path.join(base_dir, 'data')
+db_path = os.path.join(data_dir, 'timers.db')
+
+# 2. Create the 'data' directory if it doesn't exist
+os.makedirs(data_dir, exist_ok=True)
+
+# 3. Configure Flask to use this new path
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 db = SQLAlchemy(app)
 
 # --- Model ---

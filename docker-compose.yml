@@ -8,4 +8,4 @@ services:
       - "5000:5000"
     volumes:
       # This mapping ensures your database survives if you delete the container
-      - ./timers.db:/app/timers.db
+      - ./data:/app/data
