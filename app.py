@@ -124,4 +124,4 @@ if __name__ == '__main__':
         print(f"✅ Database backed up to: backups/{backup_name}")
 
     # 2. Run the App
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host="0.0.0.0", port=5000, debug=True)
