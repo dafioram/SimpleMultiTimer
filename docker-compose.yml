@@ -1,0 +1,11 @@
+version: '3'
+services:
+  odometer:
+    build: .
+    container_name: activity-timer
+    restart: always
+    ports:
+      - "5000:5000"
+    volumes:
+      # This mapping ensures your database survives if you delete the container
+      - ./timers.db:/app/timers.db

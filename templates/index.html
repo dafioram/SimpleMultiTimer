@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity Timer</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0; padding: 10px;
+        }
+
+        /* --- Add Bar --- */
+        .add-form { display: flex; gap: 10px; margin-bottom: 20px; }
+        input[type="text"] {
+            flex-grow: 1; padding: 15px; border-radius: 8px; border: none; 
+            font-size: 16px; background: #2c2c2c; color: white; outline: none;
+        }
+        button.add-btn {
+            background-color: #bb86fc; border: none; padding: 0 20px;
+            border-radius: 8px; color: #000; font-weight: bold; font-size: 24px;
+        }
+
+        /* --- Timer Card --- */
+        .timer-card {
+            background-color: #1e1e1e;
+            padding: 15px; margin-bottom: 12px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: space-between;
+            border-left: 6px solid #333; /* Inactive Indicator */
+        }
+        
+        /* ACTIVE STATE: Green Border + Background Tint */
+        .timer-card.running {
+            background-color: #1b2e23;
+            border-left: 6px solid #00e676; 
+        }
+
+        /* --- Sort Arrows --- */
+        .order-controls {
+            display: flex; flex-direction: column; margin-right: 12px;
+        }
+        .arrow-btn {
+            text-decoration: none; color: #444; font-size: 1.2rem; line-height: 1; padding: 4px;
+        }
+        .arrow-btn:hover { color: #fff; }
+
+        /* --- Text Info --- */
+        .timer-info { flex-grow: 1; }
+        .timer-name { font-size: 1.1rem; font-weight: 600; color: #bb86fc; display: block; margin-bottom: 4px;}
+        .timer-display { font-size: 1.8rem; font-family: monospace; font-weight: bold; color: #fff; }
+
+        /* --- Action Buttons --- */
+        .controls { display: flex; align-items: center; gap: 15px; }
+        .btn {
+            padding: 12px 0; width: 90px; border-radius: 8px; text-decoration: none;
+            font-weight: bold; font-size: 1rem; text-align: center; display: inline-block;
+        }
+        /* State-Specific Colors */
+        .start-btn { background-color: #03dac6; color: #000; }
+        .stop-btn { background-color: #cf6679; color: #000; }
+
+        .delete-btn { text-decoration: none; color: #555; font-size: 1.5rem; padding: 5px; }
+        .delete-btn:hover { color: #ff5252; }
+    </style>
+</head>
+<body>
+
+    <form action="/add" method="POST" class="add-form">
+        <input type="text" name="name" placeholder="New Activity..." required autocomplete="off">
+        <button type="submit" class="add-btn">+</button>
+    </form>
+
+    {% for timer in timers %}
+    <div class="timer-card {{ 'running' if timer.start_time else '' }}">
+        
+        <div class="order-controls">
+            <a href="/move/{{ timer.id }}/up" class="arrow-btn">▲</a>
+            <a href="/move/{{ timer.id }}/down" class="arrow-btn">▼</a>
+        </div>
+
+        <div class="timer-info">
+            <span class="timer-name">{{ timer.name }}</span>
+            <span class="timer-display" 
+                  data-start="{{ timer.start_time if timer.start_time else '0' }}"
+                  data-banked="{{ timer.banked_time }}">
+                --:--:--
+            </span>
+        </div>
+        
+        <div class="controls">
+            {% if timer.start_time %}
+                <a href="/toggle/{{ timer.id }}" class="btn stop-btn">Stop</a>
+            {% else %}
+                <a href="/toggle/{{ timer.id }}" class="btn start-btn">Start</a>
+            {% endif %}
+
+            <a href="/delete/{{ timer.id }}" class="delete-btn" onclick="return confirm('Delete {{ timer.name }}?');">×</a>
+        </div>
+    </div>
+    {% endfor %}
+
+    <script>
+        function formatTime(totalSeconds) {
+            const s = Math.floor(totalSeconds % 60).toString().padStart(2, '0');
+            const m = Math.floor((totalSeconds / 60) % 60).toString().padStart(2, '0');
+            const h = Math.floor((totalSeconds / 3600) % 24).toString().padStart(2, '0');
+            const d = Math.floor(totalSeconds / 86400);
+
+            if (d > 0) return `${d}d ${h}:${m}:${s}`;
+            return `${h}:${m}:${s}`;
+        }
+
+        function updateTimers() {
+            const now = Math.floor(Date.now() / 1000); 
+            document.querySelectorAll('.timer-display').forEach(display => {
+                const start = parseInt(display.dataset.start); 
+                const banked = parseInt(display.dataset.banked);
+                
+                // If start > 0, it's running. Math: (Now - Start) + Banked
+                const total = start > 0 ? (now - start) + banked : banked;
+                display.innerText = formatTime(total);
+            });
+        }
+        setInterval(updateTimers, 250); // Updates 4 times a second
+        updateTimers();
+    </script>
+</body>
+</html>
