@@ -1,7 +1,11 @@
 from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import text
+
 import time
 import os
+import shutil
+import datetime
 
 app = Flask(__name__)
 
@@ -21,6 +25,8 @@ class Timer(db.Model):
     position = db.Column(db.Integer, default=0)
 
 with app.app_context():
+    # Enable WAL mode for better stability
+    db.session.execute(text("PRAGMA journal_mode=WAL"))
     db.create_all()
 
 # --- Routes ---
@@ -49,19 +55,22 @@ def add_timer():
         db.session.commit()
     return redirect(url_for('index'))
 
-@app.route('/toggle/<int:id>')
-def toggle_timer(id):
+@app.route('/start/<int:id>')
+def start_timer(id):
     timer = Timer.query.get(id)
-    if timer:
+    if timer and not timer.start_time: # Only start if currently stopped
+        timer.start_time = int(time.time())
+        db.session.commit()
+    return redirect(url_for('index'))
+
+@app.route('/stop/<int:id>')
+def stop_timer(id):
+    timer = Timer.query.get(id)
+    if timer and timer.start_time: # Only stop if currently running
         now = int(time.time())
-        if timer.start_time: 
-            # STOP: Bank the difference, clear start time
-            elapsed = now - timer.start_time
-            timer.banked_time += elapsed
-            timer.start_time = None
-        else:
-            # START: Set start time
-            timer.start_time = now
+        elapsed = now - timer.start_time
+        timer.banked_time += elapsed
+        timer.start_time = None
         db.session.commit()
     return redirect(url_for('index'))
 
@@ -93,4 +102,17 @@ def delete_timer(id):
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
+    # 1. Automatic Backup on Launch
+    if os.path.exists(db_path):
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_name = f"timers_backup_{timestamp}.db"
+        # Create a 'backups' folder if it doesn't exist
+        backup_dir = os.path.join(os.path.dirname(db_path), 'backups')
+        os.makedirs(backup_dir, exist_ok=True)
+        
+        # Copy the file
+        shutil.copy(db_path, os.path.join(backup_dir, backup_name))
+        print(f"✅ Database backed up to: backups/{backup_name}")
+
+    # 2. Run the App
     app.run(host='0.0.0.0', port=5000)

@@ -90,11 +90,11 @@
         </div>
         
         <div class="controls">
-            {% if timer.start_time %}
-                <a href="/toggle/{{ timer.id }}" class="btn stop-btn">Stop</a>
-            {% else %}
-                <a href="/toggle/{{ timer.id }}" class="btn start-btn">Start</a>
-            {% endif %}
+		{% if timer.start_time %}
+			<a href="/stop/{{ timer.id }}" class="btn stop-btn">Stop</a>
+		{% else %}
+			<a href="/start/{{ timer.id }}" class="btn start-btn">Start</a>
+		{% endif %}
 
             <a href="/delete/{{ timer.id }}" class="delete-btn" onclick="return confirm('Delete {{ timer.name }}?');">×</a>
         </div>
