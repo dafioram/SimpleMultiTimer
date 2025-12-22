@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
 
@@ -50,6 +50,12 @@ def index():
     sorted_timers = sorted(timers, key=lambda t: (t.start_time is None, t.position))
     
     return render_template('index.html', timers=sorted_timers, now=time.time())
+
+# Add this to your app.py
+@app.route('/sw.js')
+def service_worker():
+    # We serve the file from 'static', but the browser thinks it's at root
+    return send_from_directory('static', 'sw.js', mimetype='application/javascript')
 
 @app.route('/add', methods=['POST'])
 def add_timer():
