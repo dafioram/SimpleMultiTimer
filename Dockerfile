@@ -1,5 +1,9 @@
 FROM python:3.9-slim
 
+# Set environment variables to improve Python performance in Docker
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
 WORKDIR /app
 
 # Install dependencies
