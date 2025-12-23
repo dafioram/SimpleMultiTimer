@@ -130,4 +130,7 @@ if __name__ == '__main__':
         print(f"✅ Database backed up to: backups/{backup_name}")
 
     # 2. Run the App
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # Priority: 1. System Env (Docker) -> 2. .env file -> 3. Default 5000
+    port = int(os.environ.get("PORT", 5000))
+    # '0.0.0.0' is required for the app to be accessible on your network
+    app.run(host="0.0.0.0", port=port, debug=True)

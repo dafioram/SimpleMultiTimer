@@ -17,4 +17,5 @@ COPY . .
 EXPOSE 5000
 
 # Run the app
-CMD ["python", "app.py"]
+# This tells the container to use the PORT variable defined in your .env or docker-compose
+CMD ["sh", "-c", "python app.py"]
