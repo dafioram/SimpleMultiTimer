@@ -1,0 +1,15 @@
+[Unit]
+Description=Timer Web App
+After=network.target
+
+[Service]
+User={{USER}}
+WorkingDirectory={{WORKING_DIR}}
+ExecStart={{WORKING_DIR}}/venv/bin/python app.py
+Restart=always
+# Log locations
+StandardOutput=append:{{WORKING_DIR}}/app.log
+StandardError=append:{{WORKING_DIR}}/error.log
+
+[Install]
+WantedBy=multi-user.target
