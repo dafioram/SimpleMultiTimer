@@ -1,34 +1,38 @@
 #!/bin/bash
 set -e
 
+# 1. Root Privilege Check
+if [ "$EUID" -ne 0 ]; then 
+  echo "Error: This script must be run with sudo."
+  exit 1
+fi
+
 SERVICE="timer-app.service"
-TEMPLATE="timer-app.service.template"
 
-echo "--- Installing Timer App ---"
+# 2. Dependency & Duplicate Checks
+if ! command -v python3 &> /dev/null; then echo "Error: python3 missing"; exit 1; fi
 
-# 1. Dependency Check
-if ! command -v python3 &> /dev/null; then
-    echo "Error: python3 is not installed. Please install it and try again."
-    exit 1
-fi
-
-# 2. File Presence Checks
-if [ ! -f "$TEMPLATE" ]; then
-    echo "Error: $TEMPLATE not found."
-    exit 1
-fi
-
-# 3. Duplicate Service Check
 if systemctl is-active --quiet $SERVICE || [ -f /etc/systemd/system/$SERVICE ]; then
-    echo "Warning: $SERVICE is already installed. Run ./down.sh first."
+    echo "Warning: Service already exists. Run ./down.sh first."
     exit 1
 fi
 
-# 4. Extract Port from .env
+# 3. Setup Env & Extract Port
+echo "Setting Up Python env and install requirements"
+python3 -m venv venv
+./venv/bin/pip install -r requirements.txt
+
+# 4. Generate & Register Service
+WORKING_DIR=$(pwd)
+
+# Get the original user even if running under sudo
+REAL_USER=${SUDO_USER:-$(id -un)}
+
+# 5. Extract Port from .env (Looking for APP_PORT)
 if [ -f .env ]; then
-    APP_PORT=$(grep -E '^PORT=[0-9]+' .env | cut -d '=' -f2)
+    APP_PORT=$(grep -E '^APP_PORT=[0-9]+' .env | cut -d '=' -f2)
     if [ -z "$APP_PORT" ]; then
-        echo "Error: PORT not defined in .env."
+        echo "Error: APP_PORT not defined in .env."
         exit 1
     fi
 else
@@ -36,42 +40,14 @@ else
     exit 1
 fi
 
-# 5. NEW: Port Conflict Check
-# We check if anything is already listening on the target port
-if ss -tulpn | grep -q ":$APP_PORT "; then
-    CONFLICTING_PROCESS=$(ss -tulpn | grep ":$APP_PORT " | awk '{print $7}')
-    echo "Error: Port $APP_PORT is already in use by: $CONFLICTING_PROCESS"
-    echo "Please stop that process or change the PORT in .env before running up.sh."
-    exit 1
-fi
-
-# 6. Setup Environment
-echo "Creating virtual environment and installing dependencies..."
-python3 -m venv venv || { echo "Failed to create venv"; exit 1; }
-./venv/bin/pip install --upgrade pip
-./venv/bin/pip install -r requirements.txt
-
-# 7. Generate Service File
-WORKING_DIR=$(pwd)
-CURRENT_USER=$USER
 sed -e "s|{{WORKING_DIR}}|$WORKING_DIR|g" \
-    -e "s|{{USER}}|$CURRENT_USER|g" \
+    -e "s|{{USER}}|$REAL_USER|g" \
     -e "s|{{PORT}}|$APP_PORT|g" \
-    "$TEMPLATE" > timer-app.service
+    timer-app.service.template > timer-app.service
 
-# 8. Move and Start
-sudo mv timer-app.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable $SERVICE
-sudo systemctl start $SERVICE
+mv timer-app.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable $SERVICE
+systemctl start $SERVICE
 
-# 9. Verification
-sleep 2
-if systemctl is-active --quiet $SERVICE; then
-    echo "------------------------------------------------"
-    echo "Success: App is UP at http://$(hostname -I | awk '{print $1}'):$APP_PORT"
-    echo "------------------------------------------------"
-else
-    echo "Error: App failed to start. Check ./logs.sh"
-    exit 1
-fi
+echo "Success: App is UP at port $APP_PORT"

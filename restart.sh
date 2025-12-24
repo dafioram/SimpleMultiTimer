@@ -1,6 +1,12 @@
 #!/bin/bash
 set -e
 
+# 0. Root Privilege Check
+if [ "$EUID" -ne 0 ]; then 
+  echo "Error: This script must be run with sudo."
+  exit 1
+fi
+
 SERVICE="timer-app.service"
 TEMPLATE="timer-app.service.template"
 
@@ -12,12 +18,11 @@ if [ ! -f /etc/systemd/system/$SERVICE ]; then
     exit 1
 fi
 
-# 2. Dynamic Port Extraction (Matches up.sh logic)
+# 2. Dynamic Port Extraction
 if [ -f .env ]; then
-    # Extracts the value after 'PORT=' robustly
-    APP_PORT=$(grep -E '^PORT=[0-9]+' .env | cut -d '=' -f2)
+    APP_PORT=$(grep -E '^APP_PORT=[0-9]+' .env | cut -d '=' -f2)
     if [ -z "$APP_PORT" ]; then
-        echo "Error: .env found but PORT is not defined correctly."
+        echo "Error: .env found but $APP_PORT is not defined correctly."
         exit 1
     fi
 else
@@ -28,26 +33,28 @@ fi
 # 3. Update Configuration if needed
 if [ -f "$TEMPLATE" ]; then
     WORKING_DIR=$(pwd)
-    CURRENT_USER=$USER
+
+    # Get the original user even if running under sudo
+	REAL_USER=${SUDO_USER:-$(id -un)}
     
-    # Generate temporary service file with current variables
+    # Generate temporary service file
     sed -e "s|{{WORKING_DIR}}|$WORKING_DIR|g" \
-        -e "s|{{USER}}|$CURRENT_USER|g" \
+        -e "s|{{USER}}|$REAL_USER|g" \
         -e "s|{{PORT}}|$APP_PORT|g" \
         "$TEMPLATE" > timer-app.service.tmp
 
     # Only apply if the configuration actually changed
     if ! diff -q timer-app.service.tmp /etc/systemd/system/$SERVICE > /dev/null; then
         echo "Updating systemd config (Port changed to $APP_PORT)..."
-        sudo mv timer-app.service.tmp /etc/systemd/system/$SERVICE
-        sudo systemctl daemon-reload
+        mv timer-app.service.tmp /etc/systemd/system/$SERVICE
+        systemctl daemon-reload
     else
         rm timer-app.service.tmp
     fi
 fi
 
 # 4. Restart and Verify
-sudo systemctl restart $SERVICE
+systemctl restart $SERVICE
 sleep 2
 
 if systemctl is-active --quiet $SERVICE; then
