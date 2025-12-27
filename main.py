@@ -117,20 +117,28 @@ def delete_timer(id):
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    # 1. Automatic Backup on Launch
+    # --- 1. Automatic Backup on Launch ---
     if os.path.exists(db_path):
+        # FORCE DATA SYNC: Move data from WAL to DB before copying
+        with app.app_context():
+            print("⏳ Checkpointing database (merging WAL)...")
+            try:
+                # TRUNCATE moves data to .db and deletes the .wal file
+                db.session.execute(text("PRAGMA wal_checkpoint(TRUNCATE)"))
+                print("✅ Database checkpointed successfully.")
+            except Exception as e:
+                print(f"⚠️ Warning: Checkpoint failed: {e}")
+
+        # NOW it is safe to copy just the .db file
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_name = f"timers_backup_{timestamp}.db"
-        # Create a 'backups' folder if it doesn't exist
+        
         backup_dir = os.path.join(os.path.dirname(db_path), 'backups')
         os.makedirs(backup_dir, exist_ok=True)
         
-        # Copy the file
         shutil.copy(db_path, os.path.join(backup_dir, backup_name))
         print(f"✅ Database backed up to: backups/{backup_name}")
 
-    # 2. Run the App
-    # Priority: 1. System Env (Docker) -> 2. .env file -> 3. Default 5000
+    # --- 2. Run the App ---
     port = int(os.environ.get("PORT", 5000))
-    # '0.0.0.0' is required for the app to be accessible on your network
     app.run(host="0.0.0.0", port=port, debug=True)
