@@ -94,7 +94,6 @@ def service_worker():
 def add_timer():
     name = request.form.get('name')
     if name:
-        # Add to the bottom of the "manual" list
         max_pos = db.session.query(db.func.max(Timer.position)).scalar()
         new_pos = (max_pos + 1) if max_pos is not None else 0
         
@@ -105,16 +104,18 @@ def add_timer():
 
 @app.route('/start/<int:id>')
 def start_timer(id):
-    timer = Timer.query.get(id)
-    if timer and not timer.start_time: # Only start if currently stopped
+    # FIX: Use db.session.get(Model, id)
+    timer = db.session.get(Timer, id)
+    if timer and not timer.start_time:
         timer.start_time = int(time.time())
         db.session.commit()
     return redirect(url_for('index'))
 
 @app.route('/stop/<int:id>')
 def stop_timer(id):
-    timer = Timer.query.get(id)
-    if timer and timer.start_time: # Only stop if currently running
+    # FIX: Use db.session.get(Model, id)
+    timer = db.session.get(Timer, id)
+    if timer and timer.start_time:
         now = int(time.time())
         elapsed = now - timer.start_time
         timer.banked_time += elapsed
@@ -124,10 +125,10 @@ def stop_timer(id):
 
 @app.route('/edit_time/<int:id>', methods=['POST'])
 def edit_time(id):
-    timer = Timer.query.get(id)
+    # FIX: Use db.session.get(Model, id)
+    timer = db.session.get(Timer, id)
     new_time_str = request.form.get('new_time')
     
-    # Security: Only allow editing if timer is STOPPED
     if timer and not timer.start_time and new_time_str:
         timer.banked_time = parse_duration(new_time_str)
         db.session.commit()
@@ -136,10 +137,10 @@ def edit_time(id):
 
 @app.route('/move/<int:id>/<direction>')
 def move_timer(id, direction):
-    current = Timer.query.get(id)
+    # FIX: Use db.session.get(Model, id)
+    current = db.session.get(Timer, id)
     if not current: return redirect(url_for('index'))
     
-    # Simple swap logic for manual ordering
     if direction == 'up':
         neighbor = Timer.query.filter(Timer.position < current.position)\
                               .order_by(Timer.position.desc()).first()
@@ -155,7 +156,8 @@ def move_timer(id, direction):
 
 @app.route('/delete/<int:id>')
 def delete_timer(id):
-    timer = Timer.query.get(id)
+    # FIX: Use db.session.get(Model, id)
+    timer = db.session.get(Timer, id)
     if timer:
         db.session.delete(timer)
         db.session.commit()
