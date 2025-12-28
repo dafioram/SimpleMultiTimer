@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Activity Timer</title>
-    <style>
+	<style>
         body {
             background-color: #121212;
             color: #e0e0e0;
@@ -29,10 +29,9 @@
             background-color: #1e1e1e;
             padding: 15px; margin-bottom: 12px; border-radius: 12px;
             display: flex; align-items: center; justify-content: space-between;
-            border-left: 6px solid #333; /* Inactive Indicator */
+            border-left: 6px solid #333;
         }
         
-        /* ACTIVE STATE: Green Border + Background Tint */
         .timer-card.running {
             background-color: #1b2e23;
             border-left: 6px solid #00e676; 
@@ -48,22 +47,49 @@
         .arrow-btn:hover { color: #fff; }
 
         /* --- Text Info --- */
-        .timer-info { flex-grow: 1; }
+        /* --- FIX 1: Add margin to the right so it doesn't hit the buttons --- */
+        .timer-info { flex-grow: 1; margin-right: 20px; }
+        
         .timer-name { font-size: 1.1rem; font-weight: 600; color: #bb86fc; display: block; margin-bottom: 4px;}
         .timer-display { font-size: 1.8rem; font-family: monospace; font-weight: bold; color: #fff; }
 
         /* --- Action Buttons --- */
-        .controls { display: flex; align-items: center; gap: 15px; }
+        /* --- FIX 2: Prevent these buttons from being squished --- */
+        .controls { display: flex; align-items: center; gap: 15px; flex-shrink: 0; }
+        
         .btn {
             padding: 12px 0; width: 90px; border-radius: 8px; text-decoration: none;
             font-weight: bold; font-size: 1rem; text-align: center; display: inline-block;
         }
-        /* State-Specific Colors */
         .start-btn { background-color: #03dac6; color: #000; }
         .stop-btn { background-color: #cf6679; color: #000; }
 
         .delete-btn { text-decoration: none; color: #555; font-size: 1.5rem; padding: 5px; }
         .delete-btn:hover { color: #ff5252; }
+
+        /* --- Edit Mode Styles --- */
+        .edit-icon-btn {
+            background: none; border: none; color: #666; cursor: pointer;
+            font-size: 1.2rem; margin-left: 10px; transition: color 0.2s;
+        }
+        .edit-icon-btn:hover { color: #bb86fc; }
+
+        .edit-form { display: flex; align-items: center; gap: 8px; }
+        
+        /* --- FIX 3: Set a fixed width and prevent growing --- */
+        .edit-input {
+            width: 130px; flex-grow: 0;
+            padding: 5px; border-radius: 4px; border: 1px solid #444;
+            background: #222; color: #fff; font-size: 1.2rem; font-family: monospace;
+        }
+        .save-btn {
+            background-color: #03dac6; border: none; padding: 5px 10px;
+            border-radius: 4px; cursor: pointer; font-weight: bold; color: #000;
+        }
+        .cancel-btn {
+            background: #cf6679; border: none; padding: 5px 10px;
+            border-radius: 4px; cursor: pointer; font-weight: bold; color: black;
+        }
     </style>
 </head>
 <body>
@@ -73,7 +99,7 @@
         <button type="submit" class="add-btn">+</button>
     </form>
 
-    {% for timer in timers %}
+	{% for timer in timers %}
     <div class="timer-card {{ 'running' if timer.start_time else '' }}">
         
         <div class="order-controls">
@@ -83,19 +109,34 @@
 
         <div class="timer-info">
             <span class="timer-name">{{ timer.name }}</span>
-            <span class="timer-display" 
-                  data-start="{{ timer.start_time if timer.start_time else '0' }}"
-                  data-banked="{{ timer.banked_time }}">
-                --:--:--
-            </span>
+            
+            <div id="display-box-{{ timer.id }}" class="display-box">
+                <span class="timer-display" 
+                      data-start="{{ timer.start_time if timer.start_time else '0' }}"
+                      data-banked="{{ timer.banked_time }}">
+                    --:--:--
+                </span>
+                
+                {% if not timer.start_time %}
+                <button onclick="toggleEdit('{{ timer.id }}')" class="edit-icon-btn" title="Edit Time">
+                    ✎
+                </button>
+                {% endif %}
+            </div>
+
+            <form id="edit-form-{{ timer.id }}" action="/edit_time/{{ timer.id }}" method="POST" class="edit-form" style="display:none;">
+                <input type="text" name="new_time" class="edit-input" placeholder="HH:MM (e.g. 1:30)" autocomplete="off">
+                <button type="submit" class="save-btn">Save</button>
+                <button type="button" onclick="toggleEdit('{{ timer.id }}')" class="cancel-btn">×</button>
+            </form>
         </div>
         
         <div class="controls">
-		{% if timer.start_time %}
-			<a href="/stop/{{ timer.id }}" class="btn stop-btn">Stop</a>
-		{% else %}
-			<a href="/start/{{ timer.id }}" class="btn start-btn">Start</a>
-		{% endif %}
+        {% if timer.start_time %}
+            <a href="/stop/{{ timer.id }}" class="btn stop-btn">Stop</a>
+        {% else %}
+            <a href="/start/{{ timer.id }}" class="btn start-btn">Start</a>
+        {% endif %}
 
             <a href="/delete/{{ timer.id }}" class="delete-btn" onclick="return confirm('Delete {{ timer.name }}?');">×</a>
         </div>
@@ -103,6 +144,22 @@
     {% endfor %}
 
     <script>
+		function toggleEdit(id) {
+            const displayBox = document.getElementById(`display-box-${id}`);
+            const editForm = document.getElementById(`edit-form-${id}`);
+            
+            if (editForm.style.display === 'none') {
+                // Show Edit, Hide Display
+                displayBox.style.display = 'none';
+                editForm.style.display = 'flex';
+                // Focus the input automatically
+                editForm.querySelector('input').focus();
+            } else {
+                // Show Display, Hide Edit
+                displayBox.style.display = 'block';
+                editForm.style.display = 'none';
+            }
+        }
         function formatTime(totalSeconds) {
             const s = Math.floor(totalSeconds % 60).toString().padStart(2, '0');
             const m = Math.floor((totalSeconds / 60) % 60).toString().padStart(2, '0');

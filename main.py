@@ -24,6 +24,39 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
+# --- Helpers ---
+
+def parse_duration(time_str):
+    """
+    Parses strings like '1:30' (1h 30m), '15' (15m), or '1:00:00' (1h)
+    Returns total seconds (int).
+    """
+    time_str = time_str.strip()
+    if not time_str: return 0
+    
+    parts = time_str.split(':')
+    seconds = 0
+    
+    try:
+        if len(parts) == 1:
+            # User typed just a number (e.g. "15"). Treat as MINUTES.
+            seconds = int(parts[0]) * 60
+        elif len(parts) == 2:
+            # User typed "1:30" (Hours:Minutes)
+            hours = int(parts[0])
+            minutes = int(parts[1])
+            seconds = (hours * 3600) + (minutes * 60)
+        elif len(parts) == 3:
+            # User typed "1:30:15" (Hours:Minutes:Seconds)
+            hours = int(parts[0])
+            minutes = int(parts[1])
+            secs = int(parts[2])
+            seconds = (hours * 3600) + (minutes * 60) + secs
+    except ValueError:
+        pass # If bad input, return 0 or previous value (handled in route)
+        
+    return seconds
+
 # --- Model ---
 class Timer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -87,6 +120,18 @@ def stop_timer(id):
         timer.banked_time += elapsed
         timer.start_time = None
         db.session.commit()
+    return redirect(url_for('index'))
+
+@app.route('/edit_time/<int:id>', methods=['POST'])
+def edit_time(id):
+    timer = Timer.query.get(id)
+    new_time_str = request.form.get('new_time')
+    
+    # Security: Only allow editing if timer is STOPPED
+    if timer and not timer.start_time and new_time_str:
+        timer.banked_time = parse_duration(new_time_str)
+        db.session.commit()
+        
     return redirect(url_for('index'))
 
 @app.route('/move/<int:id>/<direction>')
