@@ -6,6 +6,7 @@ import time
 import os
 import shutil
 import datetime
+import subprocess
 
 app = Flask(__name__)
 
@@ -58,6 +59,33 @@ def move_to_top(timer_to_move):
     # Move target to top
     timer_to_move.position = 0
 
+def is_time_synced():
+    """
+    Cross-platform check for system clock synchronization.
+    Supports Linux (timedatectl) and Windows (w32tm).
+    """
+    try:
+        # 1. Windows Check
+        if os.name == 'nt':
+            # Run 'w32tm /query /status' to check the time source
+            output = subprocess.check_output(['w32tm', '/query', '/status'], text=True)
+            
+            # If the source is "Local CMOS Clock", it is NOT synced to the internet.
+            # If it lists a server (e.g. "time.windows.com"), it IS synced.
+            return "Local CMOS Clock" not in output
+
+        # 2. Linux / Raspberry Pi Check
+        else:
+            result = subprocess.check_output(
+                ['timedatectl', 'show', '-p', 'NTPSynchronized', '--value'],
+                text=True
+            ).strip()
+            return result == 'yes'
+
+    except Exception:
+        # If the command fails completely, fail safe to False
+        return False
+
 # --- MODEL ---
 class Timer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -75,9 +103,12 @@ with app.app_context():
 @app.route('/')
 def index():
     # 1. Sort purely by Position (0 is top)
-    # The 'Running Float' logic is now baked into the position itself
     timers = Timer.query.order_by(Timer.position.asc()).all()
-    return render_template('index.html', timers=timers, now=time.time())
+    
+    # 2. Check Time Sync Status
+    synced = is_time_synced()
+    
+    return render_template('index.html', timers=timers, now=time.time(), synced=synced)
 
 @app.route('/sw.js')
 def service_worker():
