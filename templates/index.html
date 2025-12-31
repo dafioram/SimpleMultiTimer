@@ -107,7 +107,7 @@
             <div class="sync-badge sync-ok">⏱︎ Synced</div>
         {% else %}
             <div class="sync-badge sync-err" title="System clock is not synchronized! Timers may jump.">
-                Time Drift
+                <span>⚠️</span> Time Drift
             </div>
         {% endif %}
     </div>
@@ -157,22 +157,31 @@
     {% endfor %}
 
     <script>
+        // --- NEW TIME SYNC LOGIC ---
+        // 1. Get the Server Time passed from Python (in seconds)
+        const serverTimeOnLoad = {{ now }};
+        
+        // 2. Get the Browser Time right now (in seconds)
+        const browserTimeOnLoad = Date.now() / 1000;
+        
+        // 3. Calculate the difference (Offset)
+        // This bridges the gap between Pi time and Your Computer time
+        const timeOffset = serverTimeOnLoad - browserTimeOnLoad;
+
         function toggleEdit(id) {
             const displayBox = document.getElementById(`display-box-${id}`);
             const editForm = document.getElementById(`edit-form-${id}`);
             
             if (editForm.style.display === 'none') {
-                // Show Edit, Hide Display
                 displayBox.style.display = 'none';
                 editForm.style.display = 'flex';
-                // Focus the input automatically
                 editForm.querySelector('input').focus();
             } else {
-                // Show Display, Hide Edit
                 displayBox.style.display = 'block';
                 editForm.style.display = 'none';
             }
         }
+
         function formatTime(totalSeconds) {
             const s = Math.floor(totalSeconds % 60).toString().padStart(2, '0');
             const m = Math.floor((totalSeconds / 60) % 60).toString().padStart(2, '0');
@@ -184,16 +193,25 @@
         }
 
         function updateTimers() {
-            const now = Math.floor(Date.now() / 1000); 
+            // 4. Calculate "Corrected Now" using the offset
+            const browserNow = Date.now() / 1000;
+            const currentServerTime = browserNow + timeOffset;
+
             document.querySelectorAll('.timer-display').forEach(display => {
                 const start = parseInt(display.dataset.start); 
                 const banked = parseInt(display.dataset.banked);
                 
-                // If start > 0, it's running. Math: (Now - Start) + Banked
-                const total = start > 0 ? (now - start) + banked : banked;
-                display.innerText = formatTime(total);
+                // Use currentServerTime instead of browserNow
+                // This forces the browser to respect the Pi's clock settings
+                const total = start > 0 ? (currentServerTime - start) + banked : banked;
+                
+                // Prevent negative numbers if clocks are weirdly jittery
+                const safeTotal = Math.max(0, total);
+                
+                display.innerText = formatTime(safeTotal);
             });
         }
+        
         setInterval(updateTimers, 250); // Updates 4 times a second
         updateTimers();
     </script>
