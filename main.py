@@ -9,123 +9,124 @@ import datetime
 
 app = Flask(__name__)
 
-# --- NEW PATH LOGIC ---
-# 1. Define the folder and file path
+# --- CONFIGURATION ---
 base_dir = os.path.abspath(os.path.dirname(__file__))
 data_dir = os.path.join(base_dir, 'data')
 db_path = os.path.join(data_dir, 'timers.db')
 
-# 2. Create the 'data' directory if it doesn't exist
 os.makedirs(data_dir, exist_ok=True)
 
-# 3. Configure Flask to use this new path
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-# --- Helpers ---
-
+# --- HELPERS ---
 def parse_duration(time_str):
-    """
-    Parses strings like '1:30' (1h 30m), '15' (15m), or '1:00:00' (1h)
-    Returns total seconds (int).
-    """
     time_str = time_str.strip()
     if not time_str: return 0
-    
     parts = time_str.split(':')
     seconds = 0
-    
     try:
         if len(parts) == 1:
-            # User typed just a number (e.g. "15"). Treat as MINUTES.
             seconds = int(parts[0]) * 60
         elif len(parts) == 2:
-            # User typed "1:30" (Hours:Minutes)
-            hours = int(parts[0])
-            minutes = int(parts[1])
+            hours, minutes = int(parts[0]), int(parts[1])
             seconds = (hours * 3600) + (minutes * 60)
         elif len(parts) == 3:
-            # User typed "1:30:15" (Hours:Minutes:Seconds)
-            hours = int(parts[0])
-            minutes = int(parts[1])
-            secs = int(parts[2])
+            hours, minutes, secs = int(parts[0]), int(parts[1]), int(parts[2])
             seconds = (hours * 3600) + (minutes * 60) + secs
     except ValueError:
-        pass # If bad input, return 0 or previous value (handled in route)
-        
+        pass 
     return seconds
 
-# --- Model ---
+def move_to_top(timer_to_move):
+    """
+    Shifts all timers above the target DOWN by 1, 
+    then moves the target to Position 0.
+    """
+    if timer_to_move.position == 0:
+        return # Already at top
+
+    # Find all timers strictly above the current one (0 to N-1)
+    timers_above = Timer.query.filter(Timer.position < timer_to_move.position).all()
+    
+    # Push them all down by 1
+    for t in timers_above:
+        t.position += 1
+    
+    # Move target to top
+    timer_to_move.position = 0
+
+# --- MODEL ---
 class Timer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    # start_time is NULL if stopped, otherwise it holds the timestamp
     start_time = db.Column(db.Integer, nullable=True) 
     banked_time = db.Column(db.Integer, default=0)
     position = db.Column(db.Integer, default=0)
 
 with app.app_context():
-    # Enable WAL mode for better stability
     db.session.execute(text("PRAGMA journal_mode=WAL"))
     db.create_all()
 
-# --- Routes ---
+# --- ROUTES ---
+
 @app.route('/')
 def index():
-    # 1. Get all timers
-    timers = Timer.query.all()
-    
-    # 2. Python Sort Logic for "Auto-Float"
-    # Primary Key: (t.start_time is None). False (0) comes before True (1).
-    # Secondary Key: t.position (Your manual order)
-    sorted_timers = sorted(timers, key=lambda t: (t.start_time is None, t.position))
-    
-    return render_template('index.html', timers=sorted_timers, now=time.time())
+    # 1. Sort purely by Position (0 is top)
+    # The 'Running Float' logic is now baked into the position itself
+    timers = Timer.query.order_by(Timer.position.asc()).all()
+    return render_template('index.html', timers=timers, now=time.time())
 
-# Add this to your app.py
 @app.route('/sw.js')
 def service_worker():
-    # We serve the file from 'static', but the browser thinks it's at root
     return send_from_directory('static', 'sw.js', mimetype='application/javascript')
 
 @app.route('/add', methods=['POST'])
 def add_timer():
     name = request.form.get('name')
     if name:
-        max_pos = db.session.query(db.func.max(Timer.position)).scalar()
-        new_pos = (max_pos + 1) if max_pos is not None else 0
-        
-        new_timer = Timer(name=name, position=new_pos)
+        # 1. Shift everyone down to make room at the top
+        existing_timers = Timer.query.all()
+        for t in existing_timers:
+            t.position += 1
+            
+        # 2. Insert new timer at Position 0
+        new_timer = Timer(name=name, position=0)
         db.session.add(new_timer)
         db.session.commit()
     return redirect(url_for('index'))
 
 @app.route('/start/<int:id>')
 def start_timer(id):
-    # FIX: Use db.session.get(Model, id)
     timer = db.session.get(Timer, id)
-    if timer and not timer.start_time:
-        timer.start_time = int(time.time())
+    if timer:
+        # 1. Move to Top (MRU Logic)
+        move_to_top(timer)
+        
+        # 2. Start Logic (if not already running)
+        if not timer.start_time:
+            timer.start_time = int(time.time())
+        
         db.session.commit()
     return redirect(url_for('index'))
 
 @app.route('/stop/<int:id>')
 def stop_timer(id):
-    # FIX: Use db.session.get(Model, id)
     timer = db.session.get(Timer, id)
     if timer and timer.start_time:
         now = int(time.time())
         elapsed = now - timer.start_time
         timer.banked_time += elapsed
         timer.start_time = None
+        # Note: We do NOT change position here. 
+        # It stays at the top until something else pushes it down.
         db.session.commit()
     return redirect(url_for('index'))
 
 @app.route('/edit_time/<int:id>', methods=['POST'])
 def edit_time(id):
-    # FIX: Use db.session.get(Model, id)
     timer = db.session.get(Timer, id)
     new_time_str = request.form.get('new_time')
     
@@ -135,28 +136,8 @@ def edit_time(id):
         
     return redirect(url_for('index'))
 
-@app.route('/move/<int:id>/<direction>')
-def move_timer(id, direction):
-    # FIX: Use db.session.get(Model, id)
-    current = db.session.get(Timer, id)
-    if not current: return redirect(url_for('index'))
-    
-    if direction == 'up':
-        neighbor = Timer.query.filter(Timer.position < current.position)\
-                              .order_by(Timer.position.desc()).first()
-    else: # down
-        neighbor = Timer.query.filter(Timer.position > current.position)\
-                              .order_by(Timer.position.asc()).first()
-
-    if neighbor:
-        current.position, neighbor.position = neighbor.position, current.position
-        db.session.commit()
-        
-    return redirect(url_for('index'))
-
 @app.route('/delete/<int:id>')
 def delete_timer(id):
-    # FIX: Use db.session.get(Model, id)
     timer = db.session.get(Timer, id)
     if timer:
         db.session.delete(timer)
@@ -164,28 +145,19 @@ def delete_timer(id):
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    # --- 1. Automatic Backup on Launch ---
     if os.path.exists(db_path):
-        # FORCE DATA SYNC: Move data from WAL to DB before copying
         with app.app_context():
-            print("⏳ Checkpointing database (merging WAL)...")
             try:
-                # TRUNCATE moves data to .db and deletes the .wal file
                 db.session.execute(text("PRAGMA wal_checkpoint(TRUNCATE)"))
-                print("✅ Database checkpointed successfully.")
             except Exception as e:
                 print(f"⚠️ Warning: Checkpoint failed: {e}")
 
-        # NOW it is safe to copy just the .db file
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_name = f"timers_backup_{timestamp}.db"
-        
         backup_dir = os.path.join(os.path.dirname(db_path), 'backups')
         os.makedirs(backup_dir, exist_ok=True)
-        
         shutil.copy(db_path, os.path.join(backup_dir, backup_name))
         print(f"✅ Database backed up to: backups/{backup_name}")
 
-    # --- 2. Run the App ---
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)

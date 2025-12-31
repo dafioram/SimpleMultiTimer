@@ -101,11 +101,6 @@
 
 	{% for timer in timers %}
     <div class="timer-card {{ 'running' if timer.start_time else '' }}">
-        
-        <div class="order-controls">
-            <a href="/move/{{ timer.id }}/up" class="arrow-btn">▲</a>
-            <a href="/move/{{ timer.id }}/down" class="arrow-btn">▼</a>
-        </div>
 
         <div class="timer-info">
             <span class="timer-name">{{ timer.name }}</span>
