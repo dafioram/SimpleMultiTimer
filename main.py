@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 import time
 import os
@@ -9,6 +10,10 @@ import datetime
 import subprocess
 
 app = Flask(__name__)
+
+app.wsgi_app = ProxyFix(
+    app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
+)
 
 # --- CONFIGURATION ---
 base_dir = os.path.abspath(os.path.dirname(__file__))
