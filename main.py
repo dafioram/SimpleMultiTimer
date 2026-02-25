@@ -2,12 +2,16 @@ from flask import Flask, render_template, request, redirect, url_for, send_from_
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
 from werkzeug.middleware.proxy_fix import ProxyFix
+from dotenv import load_dotenv
 
 import time
 import os
 import shutil
 import datetime
 import subprocess
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
 
@@ -122,7 +126,11 @@ with app.app_context():
 @app.route('/')
 def index():
     timers = Timer.query.all()
+    
+    # 1st Priority: Active status (Running timers bubble to top)
+    # 2nd Priority: Position score (0 is newest/most recently used)
     sorted_timers = sorted(timers, key=lambda t: (t.start_time is None, t.position))
+    
     synced = is_time_synced()
     return render_template('index.html', timers=sorted_timers, now=time.time(), synced=synced)
 
@@ -161,6 +169,7 @@ def stop_timer(id):
         elapsed = now - timer.start_time
         timer.banked_time += elapsed
         timer.start_time = None
+        
         move_to_top(timer)
         db.session.commit()
     return redirect(url_for('index'))
@@ -185,8 +194,14 @@ def delete_timer(id):
     return redirect(url_for('index'))
 
 # --- API ROUTES ---
-@app.route('/api/backup', methods=['GET', 'POST'])
+@app.route('/api/backup', methods=['POST'])
 def api_backup():
+    expected_key = os.environ.get("API_BACKUP_KEY")
+    provided_key = request.headers.get('X-API-Key')
+    
+    if expected_key and provided_key != expected_key:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+        
     success, result = backup_database()
     if success:
         return jsonify({"status": "success", "message": f"Database backed up to {result}"}), 200
@@ -194,7 +209,6 @@ def api_backup():
         return jsonify({"status": "error", "message": result}), 500
 
 if __name__ == '__main__':
-    # Automatic Backup on Launch utilizing the new helper
     print("⏳ Running startup database backup...")
     success, msg = backup_database()
     if success:

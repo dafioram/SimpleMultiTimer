@@ -1,10 +1,17 @@
-1. Run docker-compose up -d --build
-2. http://YOUR-SERVER-IP:5000
+# Activity Timer - API Documentation
 
-Database backup made on app start up.
+## Database Backup API
 
-How to DB Restore
-1. Stop App (docker compose down)
-2. Delete timers.db*
-3. Rename timers_backup*.db to timers.db and move to data folder
-4. Start app (docker compose up -d)
+You can trigger a manual database backup (forcing a WAL checkpoint and copying the SQLite database) by sending a `POST` request to the backup endpoint.
+Example cronjob:
+
+```bash
+0 2 * * * curl -s -X POST http://127.0.0.1:5000/api/backup -H "X-API-Key: your_super_secret_key_here" >> /home/pi/timer_backup.log 2>&1
+
+### Configuration
+
+Before using the API, you must configure a secure API key. 
+Create a `.env` file in the root directory of the application and add your key:
+
+```ini
+API_BACKUP_KEY=your_super_secret_key_here
