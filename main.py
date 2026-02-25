@@ -70,25 +70,16 @@ def is_time_synced():
     Supports Linux (timedatectl) and Windows (w32tm).
     """
     try:
-        # 1. Windows Check
         if os.name == 'nt':
-            # Run 'w32tm /query /status' to check the time source
             output = subprocess.check_output(['w32tm', '/query', '/status'], text=True)
-            
-            # If the source is "Local CMOS Clock", it is NOT synced to the internet.
-            # If it lists a server (e.g. "time.windows.com"), it IS synced.
             return "Local CMOS Clock" not in output
-
-        # 2. Linux / Raspberry Pi Check
         else:
             result = subprocess.check_output(
                 ['timedatectl', 'show', '-p', 'NTPSynchronized', '--value'],
                 text=True
             ).strip()
             return result == 'yes'
-
     except Exception:
-        # If the command fails completely, fail safe to False
         return False
 
 # --- MODEL ---
@@ -107,13 +98,16 @@ with app.app_context():
 
 @app.route('/')
 def index():
-    # 1. Sort purely by Position (0 is top)
-    timers = Timer.query.order_by(Timer.position.asc()).all()
+    timers = Timer.query.all()
     
-    # 2. Check Time Sync Status
+    # --- FIX: The Two-Tiered Sort Logic ---
+    # 1st Priority: Is it active? (t.start_time is None evaluates to False/0 for active, True/1 for stopped)
+    # 2nd Priority: What is its position score? (0 is newest)
+    sorted_timers = sorted(timers, key=lambda t: (t.start_time is None, t.position))
+    
     synced = is_time_synced()
     
-    return render_template('index.html', timers=timers, now=time.time(), synced=synced)
+    return render_template('index.html', timers=sorted_timers, now=time.time(), synced=synced)
 
 @app.route('/sw.js')
 def service_worker():
@@ -123,12 +117,10 @@ def service_worker():
 def add_timer():
     name = request.form.get('name')
     if name:
-        # 1. Shift everyone down to make room at the top
         existing_timers = Timer.query.all()
         for t in existing_timers:
             t.position += 1
             
-        # 2. Insert new timer at Position 0
         new_timer = Timer(name=name, position=0)
         db.session.add(new_timer)
         db.session.commit()
@@ -138,13 +130,9 @@ def add_timer():
 def start_timer(id):
     timer = db.session.get(Timer, id)
     if timer:
-        # 1. Move to Top (MRU Logic)
         move_to_top(timer)
-        
-        # 2. Start Logic (if not already running)
         if not timer.start_time:
             timer.start_time = int(time.time())
-        
         db.session.commit()
     return redirect(url_for('index'))
 
@@ -156,8 +144,10 @@ def stop_timer(id):
         elapsed = now - timer.start_time
         timer.banked_time += elapsed
         timer.start_time = None
-        # Note: We do NOT change position here. 
-        # It stays at the top until something else pushes it down.
+        
+        # --- FIX: Update the MRU position when stopping ---
+        move_to_top(timer)
+        
         db.session.commit()
     return redirect(url_for('index'))
 
