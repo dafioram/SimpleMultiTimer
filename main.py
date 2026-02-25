@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -82,6 +82,29 @@ def is_time_synced():
     except Exception:
         return False
 
+def backup_database():
+    """
+    Forces a WAL checkpoint and copies the database to the backups folder.
+    Returns (True, filename) on success, or (False, error_message) on failure.
+    """
+    if not os.path.exists(db_path):
+        return False, "Database file does not exist yet."
+        
+    try:
+        with app.app_context():
+            db.session.execute(text("PRAGMA wal_checkpoint(TRUNCATE)"))
+            
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_name = f"timers_backup_{timestamp}.db"
+        backup_dir = os.path.join(os.path.dirname(db_path), 'backups')
+        os.makedirs(backup_dir, exist_ok=True)
+        
+        dest_path = os.path.join(backup_dir, backup_name)
+        shutil.copy(db_path, dest_path)
+        return True, backup_name
+    except Exception as e:
+        return False, str(e)
+
 # --- MODEL ---
 class Timer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -99,14 +122,8 @@ with app.app_context():
 @app.route('/')
 def index():
     timers = Timer.query.all()
-    
-    # --- FIX: The Two-Tiered Sort Logic ---
-    # 1st Priority: Is it active? (t.start_time is None evaluates to False/0 for active, True/1 for stopped)
-    # 2nd Priority: What is its position score? (0 is newest)
     sorted_timers = sorted(timers, key=lambda t: (t.start_time is None, t.position))
-    
     synced = is_time_synced()
-    
     return render_template('index.html', timers=sorted_timers, now=time.time(), synced=synced)
 
 @app.route('/sw.js')
@@ -144,10 +161,7 @@ def stop_timer(id):
         elapsed = now - timer.start_time
         timer.banked_time += elapsed
         timer.start_time = None
-        
-        # --- FIX: Update the MRU position when stopping ---
         move_to_top(timer)
-        
         db.session.commit()
     return redirect(url_for('index'))
 
@@ -170,20 +184,23 @@ def delete_timer(id):
         db.session.commit()
     return redirect(url_for('index'))
 
-if __name__ == '__main__':
-    if os.path.exists(db_path):
-        with app.app_context():
-            try:
-                db.session.execute(text("PRAGMA wal_checkpoint(TRUNCATE)"))
-            except Exception as e:
-                print(f"⚠️ Warning: Checkpoint failed: {e}")
+# --- API ROUTES ---
+@app.route('/api/backup', methods=['GET', 'POST'])
+def api_backup():
+    success, result = backup_database()
+    if success:
+        return jsonify({"status": "success", "message": f"Database backed up to {result}"}), 200
+    else:
+        return jsonify({"status": "error", "message": result}), 500
 
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_name = f"timers_backup_{timestamp}.db"
-        backup_dir = os.path.join(os.path.dirname(db_path), 'backups')
-        os.makedirs(backup_dir, exist_ok=True)
-        shutil.copy(db_path, os.path.join(backup_dir, backup_name))
-        print(f"✅ Database backed up to: backups/{backup_name}")
+if __name__ == '__main__':
+    # Automatic Backup on Launch utilizing the new helper
+    print("⏳ Running startup database backup...")
+    success, msg = backup_database()
+    if success:
+        print(f"✅ Startup backup successful: backups/{msg}")
+    else:
+        print(f"⚠️ Warning: Startup backup failed: {msg}")
 
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
