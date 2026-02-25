@@ -1,14 +1,13 @@
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory, jsonify
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import text
 from werkzeug.middleware.proxy_fix import ProxyFix
 from dotenv import load_dotenv
 
 import time
 import os
-import shutil
-import datetime
 import subprocess
+
+# --- IMPORT DATABASE COMPONENTS ---
+from database import db, Timer, init_db, move_to_top, backup_database
 
 # Load environment variables from .env file
 load_dotenv()
@@ -29,9 +28,10 @@ os.makedirs(data_dir, exist_ok=True)
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-db = SQLAlchemy(app)
+# Initialize the database with our app context
+init_db(app)
 
-# --- HELPERS ---
+# --- NON-DB HELPERS ---
 def parse_duration(time_str):
     time_str = time_str.strip()
     if not time_str: return 0
@@ -49,24 +49,6 @@ def parse_duration(time_str):
     except ValueError:
         pass 
     return seconds
-
-def move_to_top(timer_to_move):
-    """
-    Shifts all timers above the target DOWN by 1, 
-    then moves the target to Position 0.
-    """
-    if timer_to_move.position == 0:
-        return # Already at top
-
-    # Find all timers strictly above the current one (0 to N-1)
-    timers_above = Timer.query.filter(Timer.position < timer_to_move.position).all()
-    
-    # Push them all down by 1
-    for t in timers_above:
-        t.position += 1
-    
-    # Move target to top
-    timer_to_move.position = 0
 
 def is_time_synced():
     """
@@ -86,43 +68,8 @@ def is_time_synced():
     except Exception:
         return False
 
-def backup_database():
-    """
-    Forces a WAL checkpoint and copies the database to the backups folder.
-    Returns (True, filename) on success, or (False, error_message) on failure.
-    """
-    if not os.path.exists(db_path):
-        return False, "Database file does not exist yet."
-        
-    try:
-        with app.app_context():
-            db.session.execute(text("PRAGMA wal_checkpoint(TRUNCATE)"))
-            
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_name = f"timers_backup_{timestamp}.db"
-        backup_dir = os.path.join(os.path.dirname(db_path), 'backups')
-        os.makedirs(backup_dir, exist_ok=True)
-        
-        dest_path = os.path.join(backup_dir, backup_name)
-        shutil.copy(db_path, dest_path)
-        return True, backup_name
-    except Exception as e:
-        return False, str(e)
-
-# --- MODEL ---
-class Timer(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    start_time = db.Column(db.Integer, nullable=True) 
-    banked_time = db.Column(db.Integer, default=0)
-    position = db.Column(db.Integer, default=0)
-
-with app.app_context():
-    db.session.execute(text("PRAGMA journal_mode=WAL"))
-    db.create_all()
 
 # --- ROUTES ---
-
 @app.route('/')
 def index():
     timers = Timer.query.all()
@@ -202,15 +149,17 @@ def api_backup():
     if expected_key and provided_key != expected_key:
         return jsonify({"status": "error", "message": "Unauthorized"}), 401
         
-    success, result = backup_database()
+    # We pass app and db_path explicitly to the helper
+    success, result = backup_database(app, db_path)
     if success:
         return jsonify({"status": "success", "message": f"Database backed up to {result}"}), 200
     else:
         return jsonify({"status": "error", "message": result}), 500
 
+
 if __name__ == '__main__':
     print("⏳ Running startup database backup...")
-    success, msg = backup_database()
+    success, msg = backup_database(app, db_path)
     if success:
         print(f"✅ Startup backup successful: backups/{msg}")
     else:
