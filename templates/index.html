@@ -138,7 +138,7 @@
             </div>
 
             <form id="edit-form-{{ timer.id }}" action="/edit_time/{{ timer.id }}" method="POST" class="edit-form" style="display:none;">
-                <input type="text" name="new_time" class="edit-input" placeholder="HH:MM (e.g. 1:30)" autocomplete="off">
+                <input type="text" name="new_time" class="edit-input" placeholder="HH:MM:SS" autocomplete="off">
                 <button type="submit" class="save-btn">Save</button>
                 <button type="button" onclick="toggleEdit('{{ timer.id }}')" class="cancel-btn">×</button>
             </form>
