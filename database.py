@@ -2,7 +2,7 @@ import os
 import shutil
 import datetime
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import text
+from sqlalchemy import text, func
 
 # Initialize SQLAlchemy with no app tied to it yet
 db = SQLAlchemy()
@@ -12,8 +12,24 @@ class Timer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     start_time = db.Column(db.Integer, nullable=True) 
-    banked_time = db.Column(db.Integer, default=0)
     position = db.Column(db.Integer, default=0)
+
+    # Relationship to sessions
+    sessions = db.relationship('SessionHistory', backref='timer', cascade="all, delete-orphan", lazy=True)
+
+    @property
+    def total_banked_time(self):
+        """Calculates the sum of all sessions and manual edits for this timer."""
+        total = db.session.query(func.sum(SessionHistory.duration)).filter_by(timer_id=self.id).scalar()
+        return total if total else 0
+
+class SessionHistory(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    timer_id = db.Column(db.Integer, db.ForeignKey('timer.id'), nullable=False)
+    entry_type = db.Column(db.String(50), default='session') # 'session' or 'manual_edit'
+    start_time = db.Column(db.Integer, nullable=False)
+    end_time = db.Column(db.Integer, nullable=False)
+    duration = db.Column(db.Integer, nullable=False) # Store in seconds
 
 # --- DATABASE SETUP ---
 def init_db(app):

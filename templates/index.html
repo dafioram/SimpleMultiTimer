@@ -20,12 +20,19 @@
         }
         .header-title { font-size: 1.5rem; font-weight: bold; color: #fff; margin: 0; }
         
+        .header-utilities {
+            display: flex; align-items: center; gap: 15px;
+        }
+
         .sync-badge {
             font-size: 0.9rem; font-weight: bold; padding: 5px 10px; border-radius: 6px;
             display: flex; align-items: center; gap: 6px;
         }
         .sync-ok { color: #00e676; background: rgba(0, 230, 118, 0.1); border: 1px solid #00e676; }
         .sync-err { color: #ff5252; background: rgba(255, 82, 82, 0.1); border: 1px solid #ff5252; animation: pulse 2s infinite; }
+
+        .history-link { color: #bb86fc; text-decoration: none; font-weight: bold; font-size: 0.9rem;}
+        .history-link:hover { text-decoration: underline; }
 
         @keyframes pulse {
             0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; }
@@ -103,13 +110,17 @@
     <div class="app-header">
         <h1 class="header-title">Activity Timer</h1>
         
-        {% if synced %}
-            <div class="sync-badge sync-ok">⏱︎ Synced</div>
-        {% else %}
-            <div class="sync-badge sync-err" title="System clock is not synchronized! Timers may jump.">
-                <span>⚠️</span> Time Drift
-            </div>
-        {% endif %}
+        <div class="header-utilities">
+            {% if synced %}
+                <div class="sync-badge sync-ok">⏱︎ Synced</div>
+            {% else %}
+                <div class="sync-badge sync-err" title="System clock is not synchronized! Timers may jump.">
+                    <span>⚠️</span> Time Drift
+                </div>
+            {% endif %}
+            
+            <a href="{{ url_for('history') }}" class="history-link">📜 View History</a>
+        </div>
     </div>
 
     <form action="/add" method="POST" class="add-form">
@@ -126,20 +137,20 @@
             <div id="display-box-{{ timer.id }}" class="display-box">
                 <span class="timer-display" 
                       data-start="{{ timer.start_time if timer.start_time else '0' }}"
-                      data-banked="{{ timer.banked_time }}">
+                      data-banked="{{ timer.total_banked_time }}">
                     --:--:--
                 </span>
                 
                 {% if not timer.start_time %}
-                <button onclick="toggleEdit('{{ timer.id }}')" class="edit-icon-btn" title="Edit Time">
+                <button onclick="toggleEdit('{{ timer.id }}')" class="edit-icon-btn" title="Add Time">
                     ✎
                 </button>
                 {% endif %}
             </div>
 
             <form id="edit-form-{{ timer.id }}" action="/edit_time/{{ timer.id }}" method="POST" class="edit-form" style="display:none;">
-                <input type="text" name="new_time" class="edit-input" placeholder="HH:MM:SS" autocomplete="off">
-                <button type="submit" class="save-btn">Save</button>
+                <input type="text" name="new_time" class="edit-input" placeholder="+HH:MM:SS" autocomplete="off">
+                <button type="submit" class="save-btn">Add</button>
                 <button type="button" onclick="toggleEdit('{{ timer.id }}')" class="cancel-btn">×</button>
             </form>
         </div>

@@ -7,7 +7,7 @@ import os
 import subprocess
 
 # --- IMPORT DATABASE COMPONENTS ---
-from database import db, Timer, init_db, move_to_top, backup_database
+from database import db, Timer, SessionHistory, init_db, move_to_top, backup_database
 
 # Load environment variables from .env file
 load_dotenv()
@@ -81,6 +81,20 @@ def index():
     synced = is_time_synced()
     return render_template('index.html', timers=sorted_timers, now=time.time(), synced=synced)
 
+@app.route('/history')
+def history():
+    # Get last 50 entries, newest first
+    logs = SessionHistory.query.order_by(SessionHistory.end_time.desc()).limit(50).all()
+    return render_template('history.html', logs=logs)
+
+@app.route('/delete_history/<int:id>')
+def delete_history(id):
+    log = db.session.get(SessionHistory, id)
+    if log:
+        db.session.delete(log)
+        db.session.commit()
+    return redirect(url_for('history'))
+
 @app.route('/sw.js')
 def service_worker():
     return send_from_directory('static', 'sw.js', mimetype='application/javascript')
@@ -114,7 +128,17 @@ def stop_timer(id):
     if timer and timer.start_time:
         now = int(time.time())
         elapsed = now - timer.start_time
-        timer.banked_time += elapsed
+        
+        # Create history record instead of updating a stored total
+        new_session = SessionHistory(
+            timer_id=timer.id,
+            entry_type='session',
+            start_time=timer.start_time,
+            end_time=now,
+            duration=elapsed
+        )
+        db.session.add(new_session)
+        
         timer.start_time = None
         
         move_to_top(timer)
@@ -124,12 +148,25 @@ def stop_timer(id):
 @app.route('/edit_time/<int:id>', methods=['POST'])
 def edit_time(id):
     timer = db.session.get(Timer, id)
-    new_time_str = request.form.get('new_time')
+    time_to_add_str = request.form.get('new_time')
     
-    if timer and not timer.start_time and new_time_str:
-        timer.banked_time = parse_duration(new_time_str)
-        db.session.commit()
+    if timer and not timer.start_time and time_to_add_str:
+        added_duration = parse_duration(time_to_add_str)
         
+        if added_duration != 0:
+            now = int(time.time())
+            
+            # Create the manual addition record
+            new_edit = SessionHistory(
+                timer_id=timer.id,
+                entry_type='manual_edit',
+                start_time=now,  
+                end_time=now,    
+                duration=added_duration
+            )
+            db.session.add(new_edit)
+            db.session.commit()
+            
     return redirect(url_for('index'))
 
 @app.route('/delete/<int:id>')
@@ -156,6 +193,32 @@ def api_backup():
     else:
         return jsonify({"status": "error", "message": result}), 500
 
+@app.template_filter('datetimeformat')
+def datetimeformat(value):
+    return time.strftime('%Y-%m-%d %H:%M', time.localtime(value))
+
+@app.template_filter('durationformat')
+def durationformat(seconds):
+    abs_s = abs(seconds)
+    h = abs_s // 3600
+    m = (abs_s % 3600) // 60
+    s = abs_s % 60
+    return f"{h:02}:{m:02}:{s:02}"
+
+# --- JINJA FILTERS ---
+@app.template_filter('datetimeformat')
+def datetimeformat(value):
+    """Converts a Unix timestamp to a readable date/time string."""
+    return time.strftime('%Y-%m-%d %H:%M', time.localtime(value))
+
+@app.template_filter('durationformat')
+def durationformat(seconds):
+    """Converts seconds into a clean HH:MM:SS string."""
+    abs_s = abs(seconds)
+    h = abs_s // 3600
+    m = (abs_s % 3600) // 60
+    s = abs_s % 60
+    return f"{h:02}:{m:02}:{s:02}"
 
 if __name__ == '__main__':
     print("⏳ Running startup database backup...")
