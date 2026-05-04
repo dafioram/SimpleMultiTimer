@@ -47,6 +47,11 @@
         button.add-btn {
             background-color: #bb86fc; border: none; padding: 0 20px;
             border-radius: 8px; color: #000; font-weight: bold; font-size: 24px;
+            cursor: pointer; /* Added for the pointing finger cursor */
+            transition: background-color 0.2s;
+        }
+        button.add-btn:hover {
+            background-color: #d7b7fd; /* Lighten slightly on hover */
         }
 
         /* --- Timer Card --- */
@@ -168,15 +173,8 @@
     {% endfor %}
 
     <script>
-        // --- NEW TIME SYNC LOGIC ---
-        // 1. Get the Server Time passed from Python (in seconds)
         const serverTimeOnLoad = {{ now }};
-        
-        // 2. Get the Browser Time right now (in seconds)
         const browserTimeOnLoad = Date.now() / 1000;
-        
-        // 3. Calculate the difference (Offset)
-        // This bridges the gap between Pi time and Your Computer time
         const timeOffset = serverTimeOnLoad - browserTimeOnLoad;
 
         function toggleEdit(id) {
@@ -204,40 +202,28 @@
         }
 
         function updateTimers() {
-            // 4. Calculate "Corrected Now" using the offset
             const browserNow = Date.now() / 1000;
             const currentServerTime = browserNow + timeOffset;
 
             document.querySelectorAll('.timer-display').forEach(display => {
                 const start = parseInt(display.dataset.start); 
                 const banked = parseInt(display.dataset.banked);
-                
-                // Use currentServerTime instead of browserNow
-                // This forces the browser to respect the Pi's clock settings
                 const total = start > 0 ? (currentServerTime - start) + banked : banked;
-                
-                // Prevent negative numbers if clocks are weirdly jittery
                 const safeTotal = Math.max(0, total);
-                
                 display.innerText = formatTime(safeTotal);
             });
         }
         
-        setInterval(updateTimers, 250); // Updates 4 times a second
+        setInterval(updateTimers, 250); 
         updateTimers();
-    </script>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register("/sw.js")
-            .then((registration) => {
-              console.log('Service Worker registered with scope:', registration.scope);
-            })
-            .catch((error) => {
-              console.log('Service Worker registration failed:', error);
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register("/sw.js").then((reg) => {
+                    console.log('SW registered:', reg.scope);
+                });
             });
-        });
-      }
+        }
     </script>
 </body>
 </html>
