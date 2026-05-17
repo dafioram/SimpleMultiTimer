@@ -1,14 +1,22 @@
-from flask import Flask, render_template, request, redirect, url_for, send_from_directory
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import text
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory, jsonify
+from werkzeug.middleware.proxy_fix import ProxyFix
+from dotenv import load_dotenv
 
 import time
 import os
-import shutil
-import datetime
 import subprocess
 
+# --- IMPORT DATABASE COMPONENTS ---
+from database import db, Timer, SessionHistory, init_db, move_to_top, backup_database
+
+# Load environment variables from .env file
+load_dotenv()
+
 app = Flask(__name__)
+
+app.wsgi_app = ProxyFix(
+    app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
+)
 
 # --- CONFIGURATION ---
 base_dir = os.path.abspath(os.path.dirname(__file__))
@@ -20,9 +28,10 @@ os.makedirs(data_dir, exist_ok=True)
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-db = SQLAlchemy(app)
+# Initialize the database with our app context
+init_db(app)
 
-# --- HELPERS ---
+# --- NON-DB HELPERS ---
 def parse_duration(time_str):
     time_str = time_str.strip()
     if not time_str: return 0
@@ -41,74 +50,50 @@ def parse_duration(time_str):
         pass 
     return seconds
 
-def move_to_top(timer_to_move):
-    """
-    Shifts all timers above the target DOWN by 1, 
-    then moves the target to Position 0.
-    """
-    if timer_to_move.position == 0:
-        return # Already at top
-
-    # Find all timers strictly above the current one (0 to N-1)
-    timers_above = Timer.query.filter(Timer.position < timer_to_move.position).all()
-    
-    # Push them all down by 1
-    for t in timers_above:
-        t.position += 1
-    
-    # Move target to top
-    timer_to_move.position = 0
-
 def is_time_synced():
     """
     Cross-platform check for system clock synchronization.
     Supports Linux (timedatectl) and Windows (w32tm).
     """
     try:
-        # 1. Windows Check
         if os.name == 'nt':
-            # Run 'w32tm /query /status' to check the time source
             output = subprocess.check_output(['w32tm', '/query', '/status'], text=True)
-            
-            # If the source is "Local CMOS Clock", it is NOT synced to the internet.
-            # If it lists a server (e.g. "time.windows.com"), it IS synced.
             return "Local CMOS Clock" not in output
-
-        # 2. Linux / Raspberry Pi Check
         else:
             result = subprocess.check_output(
                 ['timedatectl', 'show', '-p', 'NTPSynchronized', '--value'],
                 text=True
             ).strip()
             return result == 'yes'
-
     except Exception:
-        # If the command fails completely, fail safe to False
         return False
 
-# --- MODEL ---
-class Timer(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    start_time = db.Column(db.Integer, nullable=True) 
-    banked_time = db.Column(db.Integer, default=0)
-    position = db.Column(db.Integer, default=0)
-
-with app.app_context():
-    db.session.execute(text("PRAGMA journal_mode=WAL"))
-    db.create_all()
 
 # --- ROUTES ---
-
 @app.route('/')
 def index():
-    # 1. Sort purely by Position (0 is top)
-    timers = Timer.query.order_by(Timer.position.asc()).all()
+    timers = Timer.query.all()
     
-    # 2. Check Time Sync Status
+    # 1st Priority: Active status (Running timers bubble to top)
+    # 2nd Priority: Position score (0 is newest/most recently used)
+    sorted_timers = sorted(timers, key=lambda t: (t.start_time is None, t.position))
+    
     synced = is_time_synced()
-    
-    return render_template('index.html', timers=timers, now=time.time(), synced=synced)
+    return render_template('index.html', timers=sorted_timers, now=time.time(), synced=synced)
+
+@app.route('/history')
+def history():
+    # Get last 50 entries, newest first
+    logs = SessionHistory.query.order_by(SessionHistory.end_time.desc()).limit(50).all()
+    return render_template('history.html', logs=logs)
+
+@app.route('/delete_history/<int:id>')
+def delete_history(id):
+    log = db.session.get(SessionHistory, id)
+    if log:
+        db.session.delete(log)
+        db.session.commit()
+    return redirect(url_for('history'))
 
 @app.route('/sw.js')
 def service_worker():
@@ -118,12 +103,10 @@ def service_worker():
 def add_timer():
     name = request.form.get('name')
     if name:
-        # 1. Shift everyone down to make room at the top
         existing_timers = Timer.query.all()
         for t in existing_timers:
             t.position += 1
             
-        # 2. Insert new timer at Position 0
         new_timer = Timer(name=name, position=0)
         db.session.add(new_timer)
         db.session.commit()
@@ -133,13 +116,9 @@ def add_timer():
 def start_timer(id):
     timer = db.session.get(Timer, id)
     if timer:
-        # 1. Move to Top (MRU Logic)
         move_to_top(timer)
-        
-        # 2. Start Logic (if not already running)
         if not timer.start_time:
             timer.start_time = int(time.time())
-        
         db.session.commit()
     return redirect(url_for('index'))
 
@@ -149,22 +128,45 @@ def stop_timer(id):
     if timer and timer.start_time:
         now = int(time.time())
         elapsed = now - timer.start_time
-        timer.banked_time += elapsed
+        
+        # Create history record instead of updating a stored total
+        new_session = SessionHistory(
+            timer_id=timer.id,
+            entry_type='session',
+            start_time=timer.start_time,
+            end_time=now,
+            duration=elapsed
+        )
+        db.session.add(new_session)
+        
         timer.start_time = None
-        # Note: We do NOT change position here. 
-        # It stays at the top until something else pushes it down.
+        
+        move_to_top(timer)
         db.session.commit()
     return redirect(url_for('index'))
 
 @app.route('/edit_time/<int:id>', methods=['POST'])
 def edit_time(id):
     timer = db.session.get(Timer, id)
-    new_time_str = request.form.get('new_time')
+    time_to_add_str = request.form.get('new_time')
     
-    if timer and not timer.start_time and new_time_str:
-        timer.banked_time = parse_duration(new_time_str)
-        db.session.commit()
+    if timer and not timer.start_time and time_to_add_str:
+        added_duration = parse_duration(time_to_add_str)
         
+        if added_duration != 0:
+            now = int(time.time())
+            
+            # Create the manual addition record
+            new_edit = SessionHistory(
+                timer_id=timer.id,
+                entry_type='manual_edit',
+                start_time=now,  
+                end_time=now,    
+                duration=added_duration
+            )
+            db.session.add(new_edit)
+            db.session.commit()
+            
     return redirect(url_for('index'))
 
 @app.route('/delete/<int:id>')
@@ -175,20 +177,56 @@ def delete_timer(id):
         db.session.commit()
     return redirect(url_for('index'))
 
-if __name__ == '__main__':
-    if os.path.exists(db_path):
-        with app.app_context():
-            try:
-                db.session.execute(text("PRAGMA wal_checkpoint(TRUNCATE)"))
-            except Exception as e:
-                print(f"⚠️ Warning: Checkpoint failed: {e}")
+# --- API ROUTES ---
+@app.route('/api/backup', methods=['POST'])
+def api_backup():
+    expected_key = os.environ.get("API_BACKUP_KEY")
+    provided_key = request.headers.get('X-API-Key')
+    
+    if expected_key and provided_key != expected_key:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+        
+    # We pass app and db_path explicitly to the helper
+    success, result = backup_database(app, db_path)
+    if success:
+        return jsonify({"status": "success", "message": f"Database backed up to {result}"}), 200
+    else:
+        return jsonify({"status": "error", "message": result}), 500
 
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_name = f"timers_backup_{timestamp}.db"
-        backup_dir = os.path.join(os.path.dirname(db_path), 'backups')
-        os.makedirs(backup_dir, exist_ok=True)
-        shutil.copy(db_path, os.path.join(backup_dir, backup_name))
-        print(f"✅ Database backed up to: backups/{backup_name}")
+@app.template_filter('datetimeformat')
+def datetimeformat(value):
+    return time.strftime('%Y-%m-%d %H:%M', time.localtime(value))
+
+@app.template_filter('durationformat')
+def durationformat(seconds):
+    abs_s = abs(seconds)
+    h = abs_s // 3600
+    m = (abs_s % 3600) // 60
+    s = abs_s % 60
+    return f"{h:02}:{m:02}:{s:02}"
+
+# --- JINJA FILTERS ---
+@app.template_filter('datetimeformat')
+def datetimeformat(value):
+    """Converts a Unix timestamp to a readable date/time string."""
+    return time.strftime('%Y-%m-%d %H:%M', time.localtime(value))
+
+@app.template_filter('durationformat')
+def durationformat(seconds):
+    """Converts seconds into a clean HH:MM:SS string."""
+    abs_s = abs(seconds)
+    h = abs_s // 3600
+    m = (abs_s % 3600) // 60
+    s = abs_s % 60
+    return f"{h:02}:{m:02}:{s:02}"
+
+if __name__ == '__main__':
+    print("⏳ Running startup database backup...")
+    success, msg = backup_database(app, db_path)
+    if success:
+        print(f"✅ Startup backup successful: backups/{msg}")
+    else:
+        print(f"⚠️ Warning: Startup backup failed: {msg}")
 
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)

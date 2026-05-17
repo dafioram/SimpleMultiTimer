@@ -20,12 +20,19 @@
         }
         .header-title { font-size: 1.5rem; font-weight: bold; color: #fff; margin: 0; }
         
+        .header-utilities {
+            display: flex; align-items: center; gap: 15px;
+        }
+
         .sync-badge {
             font-size: 0.9rem; font-weight: bold; padding: 5px 10px; border-radius: 6px;
             display: flex; align-items: center; gap: 6px;
         }
         .sync-ok { color: #00e676; background: rgba(0, 230, 118, 0.1); border: 1px solid #00e676; }
         .sync-err { color: #ff5252; background: rgba(255, 82, 82, 0.1); border: 1px solid #ff5252; animation: pulse 2s infinite; }
+
+        .history-link { color: #bb86fc; text-decoration: none; font-weight: bold; font-size: 0.9rem;}
+        .history-link:hover { text-decoration: underline; }
 
         @keyframes pulse {
             0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; }
@@ -40,6 +47,11 @@
         button.add-btn {
             background-color: #bb86fc; border: none; padding: 0 20px;
             border-radius: 8px; color: #000; font-weight: bold; font-size: 24px;
+            cursor: pointer; /* Added for the pointing finger cursor */
+            transition: background-color 0.2s;
+        }
+        button.add-btn:hover {
+            background-color: #d7b7fd; /* Lighten slightly on hover */
         }
 
         /* --- Timer Card --- */
@@ -103,13 +115,17 @@
     <div class="app-header">
         <h1 class="header-title">Activity Timer</h1>
         
-        {% if synced %}
-            <div class="sync-badge sync-ok">⏱︎ Synced</div>
-        {% else %}
-            <div class="sync-badge sync-err" title="System clock is not synchronized! Timers may jump.">
-                <span>⚠️</span> Time Drift
-            </div>
-        {% endif %}
+        <div class="header-utilities">
+            {% if synced %}
+                <div class="sync-badge sync-ok">⏱︎ Synced</div>
+            {% else %}
+                <div class="sync-badge sync-err" title="System clock is not synchronized! Timers may jump.">
+                    <span>⚠️</span> Time Drift
+                </div>
+            {% endif %}
+            
+            <a href="{{ url_for('history') }}" class="history-link">📜 View History</a>
+        </div>
     </div>
 
     <form action="/add" method="POST" class="add-form">
@@ -126,20 +142,20 @@
             <div id="display-box-{{ timer.id }}" class="display-box">
                 <span class="timer-display" 
                       data-start="{{ timer.start_time if timer.start_time else '0' }}"
-                      data-banked="{{ timer.banked_time }}">
+                      data-banked="{{ timer.total_banked_time }}">
                     --:--:--
                 </span>
                 
                 {% if not timer.start_time %}
-                <button onclick="toggleEdit('{{ timer.id }}')" class="edit-icon-btn" title="Edit Time">
+                <button onclick="toggleEdit('{{ timer.id }}')" class="edit-icon-btn" title="Add Time">
                     ✎
                 </button>
                 {% endif %}
             </div>
 
             <form id="edit-form-{{ timer.id }}" action="/edit_time/{{ timer.id }}" method="POST" class="edit-form" style="display:none;">
-                <input type="text" name="new_time" class="edit-input" placeholder="HH:MM (e.g. 1:30)" autocomplete="off">
-                <button type="submit" class="save-btn">Save</button>
+                <input type="text" name="new_time" class="edit-input" placeholder="+HH:MM:SS" autocomplete="off">
+                <button type="submit" class="save-btn">Add</button>
                 <button type="button" onclick="toggleEdit('{{ timer.id }}')" class="cancel-btn">×</button>
             </form>
         </div>
@@ -157,15 +173,8 @@
     {% endfor %}
 
     <script>
-        // --- NEW TIME SYNC LOGIC ---
-        // 1. Get the Server Time passed from Python (in seconds)
         const serverTimeOnLoad = {{ now }};
-        
-        // 2. Get the Browser Time right now (in seconds)
         const browserTimeOnLoad = Date.now() / 1000;
-        
-        // 3. Calculate the difference (Offset)
-        // This bridges the gap between Pi time and Your Computer time
         const timeOffset = serverTimeOnLoad - browserTimeOnLoad;
 
         function toggleEdit(id) {
@@ -193,40 +202,28 @@
         }
 
         function updateTimers() {
-            // 4. Calculate "Corrected Now" using the offset
             const browserNow = Date.now() / 1000;
             const currentServerTime = browserNow + timeOffset;
 
             document.querySelectorAll('.timer-display').forEach(display => {
                 const start = parseInt(display.dataset.start); 
                 const banked = parseInt(display.dataset.banked);
-                
-                // Use currentServerTime instead of browserNow
-                // This forces the browser to respect the Pi's clock settings
                 const total = start > 0 ? (currentServerTime - start) + banked : banked;
-                
-                // Prevent negative numbers if clocks are weirdly jittery
                 const safeTotal = Math.max(0, total);
-                
                 display.innerText = formatTime(safeTotal);
             });
         }
         
-        setInterval(updateTimers, 250); // Updates 4 times a second
+        setInterval(updateTimers, 250); 
         updateTimers();
-    </script>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register("/sw.js")
-            .then((registration) => {
-              console.log('Service Worker registered with scope:', registration.scope);
-            })
-            .catch((error) => {
-              console.log('Service Worker registration failed:', error);
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register("/sw.js").then((reg) => {
+                    console.log('SW registered:', reg.scope);
+                });
             });
-        });
-      }
+        }
     </script>
 </body>
 </html>
