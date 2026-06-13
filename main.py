@@ -221,12 +221,6 @@ def durationformat(seconds):
     return f"{h:02}:{m:02}:{s:02}"
 
 if __name__ == '__main__':
-    print("⏳ Running startup database backup...")
-    success, msg = backup_database(app, db_path)
-    if success:
-        print(f"✅ Startup backup successful: backups/{msg}")
-    else:
-        print(f"⚠️ Warning: Startup backup failed: {msg}")
 
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
