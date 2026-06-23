@@ -83,9 +83,15 @@ def index():
 
 @app.route('/history')
 def history():
-    # Get last 50 entries, newest first
-    logs = SessionHistory.query.order_by(SessionHistory.end_time.desc()).limit(50).all()
-    return render_template('history.html', logs=logs)
+    # Grab the requested page number from the URL, defaulting to 1
+    page = request.args.get('page', 1, type=int)
+    
+    # Paginate queries: 15 items per page, newest first
+    item_per_page = 10
+    pagination = SessionHistory.query.order_by(SessionHistory.end_time.desc()).paginate(page=page, per_page=item_per_page, error_out=False)
+    
+    # Pass both the specific page's logs and the pagination object to the template
+    return render_template('history.html', logs=pagination.items, pagination=pagination)
 
 @app.route('/delete_history/<int:id>')
 def delete_history(id):

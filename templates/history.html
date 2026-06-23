@@ -48,6 +48,20 @@
         }
         .delete-log:hover { color: #ff5252; } /* Turns red on hover */
 
+        /* --- Pagination Styling Added Here --- */
+        .pagination {
+            display: flex; justify-content: center; align-items: center;
+            margin-top: 20px; gap: 15px;
+        }
+        .page-btn {
+            background-color: #2c2c2c; color: #bb86fc; padding: 8px 16px;
+            border-radius: 6px; text-decoration: none; font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        .page-btn:hover:not(.disabled) { background-color: #3d3d3d; }
+        .page-btn.disabled { color: #555; cursor: not-allowed; }
+        .page-info { color: #aaa; font-size: 0.9rem; }
+
         @media (max-width: 600px) {
             .hide-mobile { display: none; }
         }
@@ -67,8 +81,7 @@
                 <th>Type</th>
                 <th class="hide-mobile">Date</th>
                 <th>Amount</th>
-                <th style="text-align: center;">Action</th> <!-- Added Header -->
-            </tr>
+                <th style="text-align: center;">Action</th> </tr>
         </thead>
         <tbody>
             {% for log in logs %}
@@ -102,6 +115,24 @@
             {% endfor %}
         </tbody>
     </table>
+
+    {% if pagination.pages > 1 %}
+    <div class="pagination">
+        {% if pagination.has_prev %}
+            <a href="{{ url_for('history', page=pagination.prev_num) }}" class="page-btn">← Newer</a>
+        {% else %}
+            <span class="page-btn disabled">← Newer</span>
+        {% endif %}
+
+        <span class="page-info">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+
+        {% if pagination.has_next %}
+            <a href="{{ url_for('history', page=pagination.next_num) }}" class="page-btn">Older →</a>
+        {% else %}
+            <span class="page-btn disabled">Older →</span>
+        {% endif %}
+    </div>
+    {% endif %}
 
 </body>
 </html>
