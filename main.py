@@ -93,7 +93,7 @@ def history():
     # Pass both the specific page's logs and the pagination object to the template
     return render_template('history.html', logs=pagination.items, pagination=pagination)
 
-@app.route('/delete_history/<int:id>')
+@app.route('/delete_history/<int:id>', methods=['POST'])
 def delete_history(id):
     log = db.session.get(SessionHistory, id)
     if log:
@@ -118,7 +118,7 @@ def add_timer():
         db.session.commit()
     return redirect(url_for('index'))
 
-@app.route('/start/<int:id>')
+@app.route('/start/<int:id>', methods=['POST'])
 def start_timer(id):
     timer = db.session.get(Timer, id)
     if timer:
@@ -128,7 +128,7 @@ def start_timer(id):
         db.session.commit()
     return redirect(url_for('index'))
 
-@app.route('/stop/<int:id>')
+@app.route('/stop/<int:id>', methods=['POST'])
 def stop_timer(id):
     timer = db.session.get(Timer, id)
     if timer and timer.start_time:
@@ -175,7 +175,7 @@ def edit_time(id):
             
     return redirect(url_for('index'))
 
-@app.route('/delete/<int:id>')
+@app.route('/delete/<int:id>', methods=['POST'])
 def delete_timer(id):
     timer = db.session.get(Timer, id)
     if timer:

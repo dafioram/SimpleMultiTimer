@@ -162,12 +162,18 @@
         
         <div class="controls">
         {% if timer.start_time %}
-            <a href="/stop/{{ timer.id }}" class="btn stop-btn">Stop</a>
+        <form action="/stop/{{ timer.id }}" method="POST" style="display:inline;">
+			<button type="submit" class="btn stop-btn" style="border:none; cursor:pointer;">Stop</button>
+		</form>
         {% else %}
-            <a href="/start/{{ timer.id }}" class="btn start-btn">Start</a>
+		<form action="/start/{{ timer.id }}" method="POST" style="display:inline;">
+			<button type="submit" class="btn start-btn" style="border:none; cursor:pointer;">Start</button>
+		</form>
         {% endif %}
 
-            <a href="/delete/{{ timer.id }}" class="delete-btn" onclick="return confirm('Delete {{ timer.name }}?');">×</a>
+        <form action="/delete/{{ timer.id }}" method="POST" style="display:inline;" onsubmit="return confirm('Delete {{ timer.name }}?');">
+			<button type="submit" class="delete-btn" style="border:none; background:none; cursor:pointer;">×</button>
+		</form>
         </div>
     </div>
     {% endfor %}

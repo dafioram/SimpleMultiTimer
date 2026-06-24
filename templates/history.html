@@ -98,13 +98,13 @@
                 <td class="{{ 'duration-pos' if log.duration >= 0 else 'duration-neg' }}">
                     {{ '+' if log.duration > 0 }}{{ log.duration | durationformat }}
                 </td>
-                <td style="text-align: center;">
-                    <a href="/delete_history/{{ log.id }}" 
-                       class="delete-log" 
-                       onclick="return confirm('Delete this log entry? This will change the timer\'s total time.');">
-                       ×
-                    </a>
-                </td>
+			<td style="text-align: center;">
+				<form action="/delete_history/{{ log.id }}" method="POST" style="display:inline;" onsubmit="return confirm('Delete this log entry? This will change the timer\'s total time.');">
+				<button type="submit" class="delete-log" style="border:none; background:none; cursor:pointer;">
+					×
+				</button>
+				</form>
+			</td>
             </tr>
             {% else %}
             <tr>
