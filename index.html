@@ -1,847 +1,266 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity Tracker</title>
+    <link rel="manifest" href="/manifest.json">
+    <style>
+        :root {
+            --bg: #121212;
+            --card-bg: #1e1e1e;
+            --text: #e0e0e0;
+            --accent: #bb86fc;
+            --success: #03dac6;
+            --danger: #cf6679;
+        }
 
-<title>Activity Tracker</title>
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 20px; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 900px; margin-inline: auto; }
 
-<link rel="manifest" href="/manifest.json">
+        nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
+        h1 { margin: 0; color: #fff; font-size: 1.8rem; }
+        .header-right { display: flex; align-items: center; gap: 15px; }
+        .header-right a { color: var(--accent); text-decoration: none; font-weight: bold; }
+        
+        .btn-clear { background: #4b1f24; color: #ff9aa8; border: 1px solid var(--danger); padding: 8px 12px; border-radius: 8px; cursor: pointer; }
+        
+        .add-bar { display: flex; gap: 10px; margin-bottom: 25px; }
+        .add-bar input { flex: 1; padding: 15px; border: none; border-radius: 8px; background: #2b2b2b; color: white; font-size: 16px; }
 
-<style>
-
-*{
-    box-sizing:border-box;
+        .timer-card { background: var(--card-bg); border-left: 6px solid #333; border-radius: 12px; padding: 18px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .timer-card.running { background: #1b2e23; border-left-color: #00e676; }
+        
+        .timer-name { display: block; color: var(--accent); font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; }
+        .time-display { font-family: monospace; font-size: 1.8rem; font-weight: bold; color: white; }
+        
+        .controls { display: flex; align-items: center; gap: 10px; }
+        button { cursor: pointer; border: none; border-radius: 8px; font-weight: bold; transition: .2s; }
+        .btn { width: 90px; padding: 12px 0; font-size: 15px; }
+        .btn-start { background: var(--success); color: black; }
+        .btn-stop { background: var(--danger); color: black; }
+        .icon-btn { background: none; color: #666; font-size: 22px; padding: 5px 8px; }
+        .icon-btn:hover { color: var(--accent); }
+        
+        .edit-form { display: none; margin-top: 12px; align-items: center; gap: 8px; }
+        .edit-form input { width: 160px; padding: 8px 10px; background: #292929; border: 1px solid #444; color: white; border-radius: 6px; font-family: monospace; }
+		.edit-form button {
+    padding: 12px 20px; /* Increased height and width */
+    font-size: 16px;    /* Larger text */
+    min-width: 60px;    /* Ensures they look consistent */
 }
-
-body{
-    margin:0;
-    padding:20px;
-    background:#121212;
-    color:#e0e0e0;
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    max-width:900px;
-    margin-inline:auto;
-}
-
-nav{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:25px;
-    flex-wrap:wrap;
-    gap:15px;
-}
-
-nav h1{
-    margin:0;
-    color:#fff;
-    font-size:1.8rem;
-}
-
-.header-right{
-    display:flex;
-    align-items:center;
-    gap:15px;
-}
-
-.header-right a{
-    color:#bb86fc;
-    text-decoration:none;
-    font-weight:bold;
-}
-
-.header-right a:hover{
-    text-decoration:underline;
-}
-
-.btn-clear{
-    background:#4b1f24;
-    color:#ff9aa8;
-    border:1px solid #cf6679;
-}
-
-.add-bar{
-    display:flex;
-    gap:10px;
-    margin-bottom:25px;
-}
-
-.add-bar input{
-    flex:1;
-    padding:15px;
-    border:none;
-    border-radius:8px;
-    background:#2b2b2b;
-    color:white;
-    font-size:16px;
-    outline:none;
-}
-
-.add-bar input::placeholder{
-    color:#888;
-}
-
-.timer-card{
-
-    background:#1e1e1e;
-    border-left:6px solid #333;
-
-    border-radius:12px;
-
-    padding:18px;
-
-    margin-bottom:15px;
-
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-
-    transition:.25s;
-}
-
-.timer-card.running{
-
-    background:#1b2e23;
-
-    border-left-color:#00e676;
-}
-
-.timer-info{
-
-    flex:1;
-}
-
-.timer-name{
-
-    display:block;
-
-    color:#bb86fc;
-
-    font-size:1.1rem;
-
-    font-weight:600;
-
-    margin-bottom:8px;
-}
-
-.time-row{
-
-    display:flex;
-
-    align-items:center;
-
-    gap:10px;
-}
-
-.time-display{
-
-    font-family:monospace;
-
-    font-size:1.8rem;
-
-    font-weight:bold;
-
-    color:white;
-}
-
-.controls{
-
-    display:flex;
-
-    align-items:center;
-
-    gap:10px;
-}
-
-button{
-
-    cursor:pointer;
-
-    border:none;
-
-    border-radius:8px;
-
-    font-weight:bold;
-
-    transition:.2s;
-}
-
-.btn{
-
-    width:90px;
-
-    padding:12px 0;
-
-    font-size:15px;
-}
-
-.btn-start{
-
-    background:#03dac6;
-
-    color:black;
-}
-
-.btn-start:hover{
-
-    background:#38f5e3;
-}
-
-.btn-stop{
-
-    background:#cf6679;
-
-    color:black;
-}
-
-.btn-stop:hover{
-
-    background:#e27d90;
-}
-
-.icon-btn{
-
-    background:none;
-
-    color:#666;
-
-    font-size:22px;
-
-    padding:5px 8px;
-}
-
-.icon-btn:hover{
-
-    color:#bb86fc;
-}
-
-.delete-btn:hover{
-
-    color:#ff5252;
-}
-
-.edit-form .btn-start,
-.edit-form .btn-stop {
-    padding:8px 14px;
-    width:auto;
-}
-
-.edit-form{
-
-    display:none;
-
-    margin-top:12px;
-
-    align-items:center;
-
-    gap:8px;
-}
-
-.edit-form input{
-    width:160px;
-    padding:8px 10px;
-    background:#292929;
-    border:1px solid #444;
-    color:white;
-    border-radius:6px;
-    font-family:monospace;
-}
-
-.edit-form button{
-
-    padding:8px 14px;
-}
-
-.empty{
-
-    text-align:center;
-
-    color:#777;
-
-    margin-top:60px;
-
-    font-size:1.1rem;
-}
-
-@media(max-width:700px){
-
-.timer-card{
-
-flex-direction:column;
-
-align-items:flex-start;
-
-gap:15px;
-}
-
-.controls{
-
-width:100%;
-
-justify-content:flex-end;
-}
-
-nav{
-
-flex-direction:column;
-
-align-items:flex-start;
-}
-
-.header-right{
-
-width:100%;
-
-justify-content:space-between;
-}
-
-}
-
-</style>
-
+        
+        .empty { text-align: center; color: #777; margin-top: 60px; }
+
+	@media(max-width: 700px) {
+		/* Allow items to wrap instead of forcing a column stack */
+		.timer-card { flex-wrap: wrap; gap: 10px; }
+		.timer-info { flex: 1; min-width: 200px; }
+		.controls { gap: 5px; }
+	}
+    </style>
 </head>
-
 <body>
 
 <nav>
-
-<h1>Activity Tracker</h1>
-
-<div class="header-right">
-
-<a href="history.html">📜 View History</a>
-
-<button
-class="btn-clear"
-onclick="clearAllData()">
-
-Clear All Data
-
-</button>
-
-</div>
-
+    <h1>Activity Tracker</h1>
+    <div class="header-right">
+        <a href="/history.html">📜 View History</a>
+        <button class="btn-clear" onclick="clearAllData()">Clear All Data</button>
+    </div>
 </nav>
 
 <div class="add-bar">
-
-<input
-id="new-timer-name"
-type="text"
-placeholder="New Activity..."
-autocomplete="off">
-
-<button
-class="btn btn-start"
-onclick="createTimer()">
-
-+
-
-</button>
-
+    <input id="new-timer-name" type="text" placeholder="New Activity..." autocomplete="off">
+    <button class="btn btn-start" onclick="createTimer()">+</button>
 </div>
 
 <div id="timers-container"></div>
 
 <script>
+    if("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(console.error);
 
-if("serviceWorker" in navigator){
+    let timers = JSON.parse(localStorage.getItem("timers")) || [];
+    let history = JSON.parse(localStorage.getItem("history")) || [];
 
-navigator.serviceWorker.register("/sw.js").catch(console.error);
-
-}
-
-let timers=JSON.parse(localStorage.getItem("timers"))||[];
-
-let history=JSON.parse(localStorage.getItem("history"))||[];
-
-function saveState(){
-
-localStorage.setItem("timers",JSON.stringify(timers));
-
-localStorage.setItem("history",JSON.stringify(history));
-
-}
-
-function formatTime(ms=0){
-
-ms=Number(ms)||0;
-
-const total=Math.floor(ms/1000);
-
-const h=String(Math.floor(total/3600)).padStart(2,"0");
-
-const m=String(Math.floor((total%3600)/60)).padStart(2,"0");
-
-const s=String(total%60).padStart(2,"0");
-
-return `${h}:${m}:${s}`;
-
-}
-
-function getBankedTime(id){
-
-return history
-.filter(h=>h.timerId===id)
-.reduce((sum,h)=>sum+(h.duration||0),0);
-
-}
-
-function getDisplayTime(timer){
-
-return getBankedTime(timer.id)+(timer.isActive?(Date.now()-timer.startTime):0);
-
-}
-
-function toggleEdit(id){
-
-const form=document.getElementById(`edit-form-${id}`);
-
-if(!form)return;
-
-form.style.display=form.style.display==="flex"
-?"none"
-:"flex";
-
-}
-
-function clearAllData(){
-
-if(!confirm("Delete ALL timers and ALL history?")) return;
-
-localStorage.removeItem("timers");
-
-localStorage.removeItem("history");
-
-timers=[];
-
-history=[];
-
-renderTimers();
-
-}
-
-function createTimer(){
-
-    const input=document.getElementById("new-timer-name");
-
-    const name=input.value.trim();
-
-    if(!name) return;
-
-
-    timers.push({
-
-        id:Date.now().toString(),
-
-        name:name,
-
-        isActive:false,
-
-        startTime:null
-
-    });
-
-
-    input.value="";
-
-    saveState();
-
-    renderTimers();
-
-}
-
-
-
-function deleteTimer(id){
-
-    const timer=timers.find(t=>t.id===id);
-
-    if(!timer) return;
-
-
-    if(!confirm(`Delete "${timer.name}"?`)){
-
-        return;
-
+    function saveState() {
+        localStorage.setItem("timers", JSON.stringify(timers));
+        localStorage.setItem("history", JSON.stringify(history));
     }
 
+    function formatTime(ms = 0) {
+        ms = Number(ms) || 0;
+        const total = Math.floor(ms / 1000);
+        const h = String(Math.floor(total / 3600)).padStart(2, "0");
+        const m = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
+        const s = String(total % 60).padStart(2, "0");
+        return `${h}:${m}:${s}`;
+    }
 
-    timers=timers.filter(t=>t.id!==id);
+    function getBankedTime(id) {
+        return history
+            .filter(h => h.timerId === id)
+            .reduce((sum, h) => sum + (h.duration || 0), 0);
+    }
 
+    function getDisplayTime(timer) {
+        return getBankedTime(timer.id) + (timer.isActive ? (Date.now() - timer.startTime) : 0);
+    }
 
-    history=history.filter(h=>h.timerId!==id);
+    function toggleEdit(id) {
+        const form = document.getElementById(`edit-form-${id}`);
+        if(form) form.style.display = form.style.display === "flex" ? "none" : "flex";
+    }
 
+    function clearAllData() {
+        if(!confirm("Delete ALL timers and ALL history?")) return;
+        localStorage.removeItem("timers");
+        localStorage.removeItem("history");
+        timers = [];
+        history = [];
+        renderTimers();
+    }
 
-    saveState();
+	function createTimer() {
+		const input = document.getElementById("new-timer-name");
+		const name = input.value.trim();
+		if(!name) return;
+		timers.push({ 
+			id: Date.now().toString(), 
+			name, 
+			isActive: false, 
+			startTime: null,
+			lastRun: Date.now() // New field for ordering
+		});
+		input.value = "";
+		saveState();
+		renderTimers();
+	}
 
-    renderTimers();
+    function deleteTimer(id) {
+        const timer = timers.find(t => t.id === id);
+        if(!timer || !confirm(`Delete "${timer.name}"?`)) return;
+        timers = timers.filter(t => t.id !== id);
+        history = history.filter(h => h.timerId !== id);
+        saveState();
+        renderTimers();
+    }
 
-}
+	function toggleTimer(id) {
+		const timer = timers.find(t => t.id === id);
+		if(!timer) return;
 
+		if(timer.isActive) {
+			history.push({
+				id: Date.now().toString(),
+				timerId: id,
+				timerName: timer.name,
+				type: "session",
+				duration: Date.now() - timer.startTime,
+				timestamp: Date.now()
+			});
+			timer.isActive = false;
+			timer.startTime = null;
+		} else {
+			timer.isActive = true;
+			timer.startTime = Date.now();
+			// Update the "order" field to the current time
+			timer.lastRun = Date.now(); 
+		}
+		saveState();
+		renderTimers();
+	}
 
+    function parseTimeInput(value) {
+        value = value.trim();
+        let negative = value.startsWith("-");
+        value = value.replace("+", "").replace("-", "");
+        let milliseconds = 0;
+        if(value.includes(":")) {
+            const parts = value.split(":").map(Number);
+            let seconds = (parts.length === 3) ? (parts[0]*3600 + parts[1]*60 + parts[2]) : (parts[0]*60 + parts[1]);
+            milliseconds = seconds * 1000;
+        } else {
+            const minutes = parseInt(value);
+            if(isNaN(minutes)) return null;
+            milliseconds = minutes * 60 * 1000;
+        }
+        return negative ? -milliseconds : milliseconds;
+    }
 
-function toggleTimer(id){
-
-    const timer=timers.find(t=>t.id===id);
-
-    if(!timer) return;
-
-
-    if(timer.isActive){
-
-
-        const duration=Date.now()-timer.startTime;
-
+    function addManualTime(id) {
+        const timer = timers.find(t => t.id === id);
+        if(!timer) return;
+        const input = document.getElementById(`manual-input-${id}`);
+        const duration = parseTimeInput(input.value);
+        if(duration === null || duration === 0) return;
 
         history.push({
-
-            id:Date.now().toString(),
-
-            timerId:id,
-
-            timerName:timer.name,
-
-            type:"session",
-
-            duration:duration,
-
-            timestamp:Date.now()
-
+            id: Date.now().toString(),
+            timerId: id,
+            timerName: timer.name,
+            type: "manual",
+            duration: duration,
+            timestamp: Date.now()
         });
-
-
-        timer.isActive=false;
-
-        timer.startTime=null;
-
-
-
-    }else{
-
-
-        timer.isActive=true;
-
-        timer.startTime=Date.now();
-
-
+        input.value = "";
+        toggleEdit(id);
+        saveState();
+        renderTimers();
     }
 
+	function renderTimers() {
+		const container = document.getElementById("timers-container");
+		if (timers.length === 0) {
+			container.innerHTML = `<div class="empty">No timers yet. Add an activity above.</div>`;
+			return;
+		}
 
-saveState();
-renderTimers();
-requestAnimationFrame(updateTimers);
-}
+		// Sort timers:
+		// 1. Active timers come first
+		// 2. Then by lastRun (most recent first)
+		const sortedTimers = [...timers].sort((a, b) => {
+			if (a.isActive !== b.isActive) {
+				return a.isActive ? -1 : 1;
+			}
+			return (b.lastRun || 0) - (a.lastRun || 0);
+		});
 
+		container.innerHTML = sortedTimers.map(timer => `
+				<div class="timer-card ${timer.isActive ? 'running' : ''}">
+					<div style="flex: 1;">
+						<span class="timer-name">${timer.name}</span>
+						<div style="display: flex; align-items: center; gap: 10px;">
+							<span class="time-display" id="display-${timer.id}">${formatTime(getDisplayTime(timer))}</span>
+							${!timer.isActive ? `<button class="icon-btn" onclick="toggleEdit('${timer.id}')" title="Add time">✎</button>` : ''}
+						</div>
+					</div>
+					
+					<div class="controls">
+						<button class="btn ${timer.isActive ? "btn-stop" : "btn-start"}" onclick="toggleTimer('${timer.id}')">
+							${timer.isActive ? "Stop" : "Start"}
+						</button>
+						<button class="icon-btn" onclick="deleteTimer('${timer.id}')" title="Delete">×</button>
+					</div>
 
+					<div id="edit-form-${timer.id}" class="edit-form" style="width: 100%;">
+						<input id="manual-input-${timer.id}" placeholder="+ HH:MM:SS">
+						<button class="btn-start" onclick="addManualTime('${timer.id}')">Add</button>
+						<button class="btn-stop" onclick="toggleEdit('${timer.id}')">×</button>
+					</div>
+				</div>
+			`).join("");
+	}
 
-function parseTimeInput(value){
-
-    value=value.trim();
-
-
-    /*
-       Supports:
-
-       15
-       -15
-
-       01:30:00
-
-       +01:30:00
-
-    */
-
-
-    let negative=value.startsWith("-");
-
-
-    value=value.replace("+","").replace("-","");
-
-
-    let milliseconds=0;
-
-
-    if(value.includes(":")){
-
-
-        const parts=value.split(":").map(Number);
-
-
-        let seconds=0;
-
-
-        if(parts.length===3){
-
-            seconds=
-                parts[0]*3600+
-                parts[1]*60+
-                parts[2];
-
-        }
-
-
-        else if(parts.length===2){
-
-            seconds=
-                parts[0]*60+
-                parts[1];
-
-        }
-
-
-        milliseconds=seconds*1000;
-
-
-
-    }else{
-
-
-        const minutes=parseInt(value);
-
-
-        if(isNaN(minutes)){
-
-            return null;
-
-        }
-
-
-        milliseconds=minutes*60*1000;
-
-
+    function updateTimers() {
+        timers.filter(t => t.isActive).forEach(t => {
+            const el = document.getElementById(`display-${t.id}`);
+            if(el) el.textContent = formatTime(getDisplayTime(t));
+        });
     }
 
-
-    return negative
-        ? -milliseconds
-        : milliseconds;
-
-}
-
-
-
-function addManualTime(id){
-
-    const timer=timers.find(t=>t.id===id);
-
-    if(!timer)return;
-
-
-    const input=document.getElementById(`manual-input-${id}`);
-
-
-    const duration=parseTimeInput(input.value);
-
-
-    if(duration===null || duration===0){
-
-        return;
-
-    }
-
-
-    history.push({
-
-        id:Date.now().toString(),
-
-        timerId:id,
-
-        timerName:timer.name,
-
-        type:"manual",
-
-        duration:duration,
-
-        timestamp:Date.now()
-
-    });
-
-
-    input.value="";
-
-
-    toggleEdit(id);
-
-
-    saveState();
-
+    setInterval(updateTimers, 100);
     renderTimers();
-
-}
-
-function renderTimers(){
-
-    const container=document.getElementById("timers-container");
-
-
-    if(timers.length===0){
-
-        container.innerHTML=`
-            <div class="empty">
-                No timers yet. Add an activity above.
-            </div>
-        `;
-
-        return;
-
-    }
-
-
-    container.innerHTML=timers.map(timer=>{
-
-
-        const running=timer.isActive ? "running" : "";
-
-
-        return `
-
-        <div class="timer-card ${running}">
-
-
-            <div class="timer-info">
-
-
-                <span class="timer-name">
-                    ${timer.name}
-                </span>
-
-
-                <div class="time-row">
-
-
-                    <span 
-                        class="time-display"
-                        id="display-${timer.id}">
-                        ${formatTime(getDisplayTime(timer))}
-                    </span>
-
-
-                    ${
-                    !timer.isActive
-                    ?
-                    `
-                    <button
-                        class="icon-btn"
-                        onclick="toggleEdit('${timer.id}')"
-                        title="Add time">
-                        ✎
-                    </button>
-                    `
-                    :
-                    ""
-                    }
-
-
-                </div>
-
-
-
-                <div 
-                    id="edit-form-${timer.id}" 
-                    class="edit-form">
-
-
-                    <input
-                        id="manual-input-${timer.id}"
-                        placeholder="+ HH:MM:SS">
-
-
-                    <button
-                        class="btn-start"
-                        onclick="addManualTime('${timer.id}')">
-                        Add
-                    </button>
-
-
-                    <button
-                        class="btn-stop"
-                        onclick="toggleEdit('${timer.id}')">
-                        ×
-                    </button>
-
-
-                </div>
-
-
-            </div>
-
-
-
-
-            <div class="controls">
-
-
-                <button
-                    class="btn ${timer.isActive ? "btn-stop" : "btn-start"}"
-                    onclick="toggleTimer('${timer.id}')">
-
-                    ${timer.isActive ? "Stop" : "Start"}
-
-                </button>
-
-
-
-                <button
-                    class="icon-btn delete-btn"
-                    onclick="deleteTimer('${timer.id}')"
-                    title="Delete timer">
-
-                    ×
-
-                </button>
-
-
-            </div>
-
-
-
-        </div>
-
-        `;
-
-
-    }).join("");
-
-}
-
-
-
-
-function updateTimers(){
-
-    timers
-    .filter(timer=>timer.isActive)
-    .forEach(timer=>{
-
-
-        const display=document.getElementById(
-            `display-${timer.id}`
-        );
-
-
-        if(display){
-
-            display.textContent=
-                formatTime(getDisplayTime(timer));
-
-        }
-
-
-    });
-
-}
-
-
-
-setInterval(updateTimers,100);
-
-
-
-renderTimers();
-
 </script>
-
 </body>
 </html>
