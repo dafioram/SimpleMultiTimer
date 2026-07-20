@@ -49,7 +49,7 @@
             border-radius: 8px; 
             color: #000; 
             font-weight: bold; 
-            font-size: 50px;   /* Kept the large size from your previous updates */
+            font-size: 26px;
             cursor: pointer; 
             transition: background-color 0.2s;
             line-height: 1;    
@@ -110,7 +110,12 @@
             min-width: 60px;    
         }
         
-        .empty { text-align: center; color: #777; margin-top: 60px; }
+        .empty {
+			text-align: center;
+			color: #777;
+			margin-top: 60px;
+			margin-bottom: 20px;
+		}
 
         @media(max-width: 700px) {
             .timer-card { flex-wrap: wrap; gap: 10px; }
@@ -192,8 +197,7 @@
                         // Current format, no changes needed
                         timers = importedData.timers;
                         history = importedData.history;
-                    } 
-                    // Example for future:
+                    }
                     // else if (dataVersion === 2) {
                     //     timers = migrateV2Timers(importedData.timers);
                     //     history = migrateV2History(importedData.history);
@@ -256,12 +260,14 @@
         const input = document.getElementById("new-timer-name");
         const name = input.value.trim();
         if(!name) return;
+		const timer_id = Date.now(); // crypto.randomUUID()
+		const timer_id_str = timer_id.toString();
         timers.push({ 
-            id: Date.now().toString(), 
+            id: timer_id_str, 
             name, 
             isActive: false, 
             startTime: null,
-            lastRun: Date.now() // New field for ordering
+            lastRun: Date.now()
         });
         input.value = "";
         saveState();
@@ -281,7 +287,7 @@
         const timer = timers.find(t => t.id === id);
         if(!timer) return;
 
-        // Update the "order" field to the current time
+        // Part of timer order is most recently toggled
         timer.lastRun = Date.now(); 
 
         if(timer.isActive) {
@@ -348,7 +354,6 @@
 
 		document.body.appendChild(toast);
 
-		// Trigger animation
 		requestAnimationFrame(() => {
 			toast.classList.add("show");
 		});
