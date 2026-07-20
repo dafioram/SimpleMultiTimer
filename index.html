@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Activity Tracker</title>
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="manifest.json">
     <style>
         :root {
             --bg: #121212;
@@ -25,8 +25,35 @@
         
         .btn-clear { background: #4b1f24; color: #ff9aa8; border: 1px solid var(--danger); padding: 8px 12px; border-radius: 8px; cursor: pointer; }
         
-        .add-bar { display: flex; gap: 10px; margin-bottom: 25px; }
-        .add-bar input { flex: 1; padding: 15px; border: none; border-radius: 8px; background: #2b2b2b; color: white; font-size: 16px; }
+		.add-form { display: flex; gap: 10px; margin-bottom: 20px; }
+
+		.add-form input[type="text"] {
+			flex-grow: 1; 
+			padding: 15px; 
+			border-radius: 8px; 
+			border: none; 
+			font-size: 16px; 
+			background: #2c2c2c; 
+			color: white; 
+			outline: none;
+		}
+
+		button.add-btn {
+			background-color: #bb86fc; 
+			border: none; 
+			padding: 5px 20px; /* Slight adjustment to padding to center the larger icon */
+			border-radius: 8px; 
+			color: #000; 
+			font-weight: bold; 
+			font-size: 26px;   /* Increased from 24px to 36px */
+			cursor: pointer; 
+			transition: background-color 0.2s;
+			line-height: 1;    /* Ensures the + symbol stays centered */
+		}
+
+		button.add-btn:hover {
+			background-color: #d7b7fd;
+		}
 
         .timer-card { background: var(--card-bg); border-left: 6px solid #333; border-radius: 12px; padding: 18px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
         .timer-card.running { background: #1b2e23; border-left-color: #00e676; }
@@ -65,20 +92,20 @@
 <nav>
     <h1>Activity Tracker</h1>
     <div class="header-right">
-        <a href="/history.html">📜 View History</a>
+        <a href="history.html">📜 View History</a>
         <button class="btn-clear" onclick="clearAllData()">Clear All Data</button>
     </div>
 </nav>
 
-<div class="add-bar">
+<div class="add-form">
     <input id="new-timer-name" type="text" placeholder="New Activity..." autocomplete="off">
-    <button class="btn btn-start" onclick="createTimer()">+</button>
+    <button class="add-btn" onclick="createTimer()">+</button>
 </div>
 
 <div id="timers-container"></div>
 
 <script>
-    if("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(console.error);
+    if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(console.error);
 
     let timers = JSON.parse(localStorage.getItem("timers")) || [];
     let history = JSON.parse(localStorage.getItem("history")) || [];
@@ -150,6 +177,9 @@
 		const timer = timers.find(t => t.id === id);
 		if(!timer) return;
 
+		// Update the "order" field to the current time
+		timer.lastRun = Date.now(); 
+
 		if(timer.isActive) {
 			history.push({
 				id: Date.now().toString(),
@@ -164,8 +194,6 @@
 		} else {
 			timer.isActive = true;
 			timer.startTime = Date.now();
-			// Update the "order" field to the current time
-			timer.lastRun = Date.now(); 
 		}
 		saveState();
 		renderTimers();
