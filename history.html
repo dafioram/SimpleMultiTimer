@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timer History Ledger</title>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f9fafb; color: #111827; }
+        nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; }
+        th, td { text-align: left; padding: 12px 15px; border-bottom: 1px solid #e5e7eb; }
+        th { background: #f3f4f6; font-weight: 600; }
+        .tag { padding: 4px 8px; border-radius: 999px; font-size: 12px; font-weight: 500; }
+        .tag-session { background: #dbeafe; color: #1e40af; }
+        .tag-manual { background: #fef3c7; color: #92400e; }
+        .btn-delete { background: #ef4444; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        
+        /* Feature: Mobile-Responsive Table Design */
+        @media (max-width: 600px) {
+            .hide-mobile { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <h1>History Ledger</h1>
+        <a href="/">&larr; Back to Timers</a>
+    </nav>
+
+    <table>
+        <thead>
+            <tr>
+                <th class="hide-mobile">Date</th>
+                <th>Timer</th>
+                <th>Type</th>
+                <th>Duration</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="history-body">
+            <!-- Populated by JS -->
+        </tbody>
+    </table>
+
+    <script>
+        let timers = JSON.parse(localStorage.getItem('timers')) || [];
+        let history = JSON.parse(localStorage.getItem('history')) || [];
+
+        function saveState() {
+            localStorage.setItem('timers', JSON.stringify(timers));
+            localStorage.setItem('history', JSON.stringify(history));
+        }
+
+        function formatTime(ms) {
+            const isNegative = ms < 0;
+            const absMs = Math.abs(ms);
+            const totalSeconds = Math.floor(absMs / 1000);
+            const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+            const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+            const s = String(totalSeconds % 60).padStart(2, '0');
+            return `${isNegative ? '-' : ''}${h}:${m}:${s}`;
+        }
+
+        function formatDate(timestamp) {
+            return new Date(timestamp).toLocaleString(undefined, { 
+                month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+            });
+        }
+
+        // Feature: Delete-Cascading in the Ledger
+        function deleteLog(logId) {
+            if (!confirm("Delete this entry?")) return;
+
+            // Remove the log and save
+            // history.splice(logIndex, 1);
+			history = history.filter(h => h.id !== logId);
+            saveState();
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const tbody = document.getElementById('history-body');
+            
+            if (history.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 20px;">No history recorded yet.</td></tr>`;
+                return;
+            }
+
+            // Sort newest first
+            const sortedHistory = [...history].sort((a, b) => b.timestamp - a.timestamp);
+
+            tbody.innerHTML = sortedHistory.map(log => `
+                <tr>
+                    <td class="hide-mobile" style="color: #6b7280; font-size: 14px;">${formatDate(log.timestamp)}</td>
+                    <td style="font-weight: 500;">${log.timerName}</td>
+                    <td><span class="tag tag-${log.type}">${log.type}</span></td>
+                    <td style="font-variant-numeric: tabular-nums;">${formatTime(log.duration)}</td>
+                    <td><button class="btn-delete" onclick="deleteLog('${log.id}')">Delete</button></td>
+                </tr>
+            `).join('');
+        }
+
+        renderHistory();
+    </script>
+</body>
+</html>
