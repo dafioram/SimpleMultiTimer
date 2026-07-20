@@ -147,10 +147,21 @@
     let timers = JSON.parse(localStorage.getItem("timers")) || [];
     let history = JSON.parse(localStorage.getItem("history")) || [];
 
-    function saveState() {
-        localStorage.setItem("timers", JSON.stringify(timers));
-        localStorage.setItem("history", JSON.stringify(history));
-    }
+	function saveState() {
+		try {
+			localStorage.setItem("timers", JSON.stringify(timers));
+			localStorage.setItem("history", JSON.stringify(history));
+		} catch (err) {
+			if (err.name === "QuotaExceededError") {
+				showToast(
+					"Storage is full. Please export your data and clear old history.",
+					true
+				);
+			} else {
+				console.error(err);
+			}
+		}
+	}
 
 	function exportData() {
         const data = {
