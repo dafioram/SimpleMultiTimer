@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity Tracker</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        :root {
+            --bg: #121212;
+            --card-bg: #1e1e1e;
+            --text: #e0e0e0;
+            --accent: #bb86fc;
+            --success: #03dac6;
+            --danger: #cf6679;
+        }
+
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 20px; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 900px; margin-inline: auto; }
+
+        nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
+        h1 { margin: 0; color: #fff; font-size: 1.8rem; }
+        .header-right { display: flex; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .header-right a { color: var(--accent); text-decoration: none; font-weight: bold; }
+        
+        .btn-clear { background: #4b1f24; color: #ff9aa8; border: 1px solid var(--danger); padding: 8px 12px; border-radius: 8px; cursor: pointer; }
+        
+        /* New buttons for Import/Export */
+        .btn-io { background: #2c2c2c; color: var(--text); border: 1px solid #444; padding: 8px 12px; border-radius: 8px; cursor: pointer; transition: 0.2s; font-weight: bold; }
+        .btn-io:hover { border-color: var(--accent); color: var(--accent); }
+        
+        .add-form { display: flex; gap: 10px; margin-bottom: 20px; }
+
+        .add-form input[type="text"] {
+            flex-grow: 1; 
+            padding: 15px; 
+            border-radius: 8px; 
+            border: none; 
+            font-size: 16px; 
+            background: #2c2c2c; 
+            color: white; 
+            outline: none;
+        }
+
+        button.add-btn {
+            background-color: #bb86fc; 
+            border: none; 
+            padding: 5px 20px; 
+            border-radius: 8px; 
+            color: #000; 
+            font-weight: bold; 
+            font-size: 26px;
+            cursor: pointer; 
+            transition: background-color 0.2s;
+            line-height: 1;    
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        button.add-btn:hover {
+            background-color: #d7b7fd;
+        }
+
+		.toast {
+			position: fixed;
+			bottom: 20px;
+			left: 50%;
+			transform: translateX(-50%) translateY(20px);
+			background: #2c2c2c;
+			color: white;
+			padding: 12px 18px;
+			border-radius: 8px;
+			border-left: 4px solid var(--success);
+			box-shadow: 0 4px 12px rgba(0,0,0,.4);
+			opacity: 0;
+			transition: opacity .3s ease, transform .3s ease;
+			z-index: 9999;
+			pointer-events: none;
+		}
+
+		.toast.show {
+			opacity: 1;
+			transform: translateX(-50%) translateY(0);
+		}
+
+		.toast.error {
+			border-left-color: var(--danger);
+		}
+
+        .timer-card { background: var(--card-bg); border-left: 6px solid #333; border-radius: 12px; padding: 18px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .timer-card.running { background: #1b2e23; border-left-color: #00e676; }
+        
+        .timer-name { display: block; color: var(--accent); font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; }
+        .time-display { font-family: monospace; font-size: 1.8rem; font-weight: bold; color: white; }
+        
+        .controls { display: flex; align-items: center; gap: 10px; }
+        button { cursor: pointer; border: none; border-radius: 8px; font-weight: bold; transition: .2s; }
+        .btn { width: 90px; padding: 12px 0; font-size: 15px; }
+        .btn-start { background: var(--success); color: black; }
+        .btn-stop { background: var(--danger); color: black; }
+        .icon-btn { background: none; color: #666; font-size: 22px; padding: 5px 8px; }
+        .icon-btn:hover { color: var(--accent); }
+        
+        .edit-form { display: none; margin-top: 12px; align-items: center; gap: 8px; }
+        .edit-form input { width: 160px; padding: 8px 10px; background: #292929; border: 1px solid #444; color: white; border-radius: 6px; font-family: monospace; }
+        .edit-form button {
+            padding: 12px 20px; 
+            font-size: 16px;    
+            min-width: 60px;    
+        }
+        
+        .empty {
+			text-align: center;
+			color: #777;
+			margin-top: 60px;
+			margin-bottom: 20px;
+		}
+
+        @media(max-width: 700px) {
+            .timer-card { flex-wrap: wrap; gap: 10px; }
+            .timer-info { flex: 1; min-width: 200px; }
+            .controls { gap: 5px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav>
+    <h1>Activity Tracker</h1>
+    <div class="header-right">
+        
+        <a href="history.html">📜 View History</a>
+    </div>
+</nav>
+
+<div class="add-form">
+    <input id="new-timer-name" type="text" placeholder="New Activity..." autocomplete="off">
+    <button class="add-btn" onclick="createTimer()">+</button>
+</div>
+
+<div id="timers-container"></div>
+
+<script>
+    if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/SimpleMultiTimer/sw.js", {
+            scope: "/SimpleMultiTimer/"
+        }).catch(console.error);
+    }
+
+    let timers = JSON.parse(localStorage.getItem("timers")) || [];
+    let history = JSON.parse(localStorage.getItem("history")) || [];
+
+	function saveState() {
+		try {
+			localStorage.setItem("timers", JSON.stringify(timers));
+			localStorage.setItem("history", JSON.stringify(history));
+		} catch (err) {
+			if (err.name === "QuotaExceededError") {
+				showToast(
+					"Storage is full. Please export your data and clear old history.",
+					true
+				);
+			} else {
+				console.error(err);
+			}
+		}
+	}
+
+	function exportData() {
+        const data = {
+            version: 1, // Add version tracker
+            timers: timers,
+            history: history
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        
+        const date = new Date().toISOString().split('T')[0];
+		const ver = String(data.version);
+        a.download = `timer_backup_v${ver}_${date}.json`;
+        
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+		showToast(`Backup exported: ${a.download}`);
+    }
+
+	function importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                let importedData = JSON.parse(e.target.result);
+                
+                // Validate basic structure
+                if (importedData.timers && importedData.history) {
+                    if(!confirm("This will overwrite your current timers and history. Are you sure?")) {
+                        event.target.value = ''; 
+                        return;
+                    }
+                    
+                    // Check version and migrate if necessary
+                    const dataVersion = importedData.version || 1; 
+                    
+                    if (dataVersion === 1) {
+                        // Current format, no changes needed
+                        timers = importedData.timers;
+                        history = importedData.history;
+                    }
+                    // else if (dataVersion === 2) {
+                    //     timers = migrateV2Timers(importedData.timers);
+                    //     history = migrateV2History(importedData.history);
+                    // }
+                    else {
+                        alert("Warning: This backup is from a newer version of the app and might not load correctly.");
+                        timers = importedData.timers;
+                        history = importedData.history;
+                    }
+
+                    saveState();
+                    renderTimers();
+                    showToast("✅ Data imported successfully!");
+                } else {
+                    showToast("❌ Error: Invalid backup file structure.", true);
+                }
+            } catch (err) {
+                showToast("❌ Error parsing the JSON file.", true);
+                console.error(err);
+            }
+            event.target.value = '';
+        };
+        reader.readAsText(file);
+    }
+
+    function formatTime(ms = 0) {
+        ms = Number(ms) || 0;
+        const total = Math.floor(ms / 1000);
+        const h = String(Math.floor(total / 3600)).padStart(2, "0");
+        const m = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
+        const s = String(total % 60).padStart(2, "0");
+        return `${h}:${m}:${s}`;
+    }
+
+    function getBankedTime(id) {
+        return history
+            .filter(h => h.timerId === id)
+            .reduce((sum, h) => sum + (h.duration || 0), 0);
+    }
+
+    function getDisplayTime(timer) {
+        return getBankedTime(timer.id) + (timer.isActive ? (Date.now() - timer.startTime) : 0);
+    }
+
+    function toggleEdit(id) {
+        const form = document.getElementById(`edit-form-${id}`);
+        if(form) form.style.display = form.style.display === "flex" ? "none" : "flex";
+    }
+
+    function clearAllData() {
+        if(!confirm("Delete ALL timers and ALL history?")) return;
+        localStorage.removeItem("timers");
+        localStorage.removeItem("history");
+        timers = [];
+        history = [];
+        renderTimers();
+    }
+
+    function createTimer() {
+        const input = document.getElementById("new-timer-name");
+        const name = input.value.trim();
+        if(!name) return;
+		const timer_id = Date.now(); // crypto.randomUUID()
+		const timer_id_str = timer_id.toString();
+        timers.push({ 
+            id: timer_id_str, 
+            name, 
+            isActive: false, 
+            startTime: null,
+            lastRun: Date.now()
+        });
+        input.value = "";
+        saveState();
+        renderTimers();
+    }
+
+    function deleteTimer(id) {
+        const timer = timers.find(t => t.id === id);
+        if(!timer || !confirm(`Delete "${timer.name}"?`)) return;
+        timers = timers.filter(t => t.id !== id);
+        history = history.filter(h => h.timerId !== id);
+        saveState();
+        renderTimers();
+    }
+
+    function toggleTimer(id) {
+        const timer = timers.find(t => t.id === id);
+        if(!timer) return;
+
+        // Part of timer order is most recently toggled
+        timer.lastRun = Date.now(); 
+
+        if(timer.isActive) {
+            history.push({
+                id: Date.now().toString(),
+                timerId: id,
+                timerName: timer.name,
+                type: "session",
+                duration: Date.now() - timer.startTime,
+                timestamp: Date.now()
+            });
+            timer.isActive = false;
+            timer.startTime = null;
+        } else {
+            timer.isActive = true;
+            timer.startTime = Date.now();
+        }
+        saveState();
+        renderTimers();
+    }
+
+    function parseTimeInput(value) {
+        value = value.trim();
+        let negative = value.startsWith("-");
+        value = value.replace("+", "").replace("-", "");
+        let milliseconds = 0;
+        if(value.includes(":")) {
+            const parts = value.split(":").map(Number);
+            let seconds = (parts.length === 3) ? (parts[0]*3600 + parts[1]*60 + parts[2]) : (parts[0]*60 + parts[1]);
+            milliseconds = seconds * 1000;
+        } else {
+            const minutes = parseInt(value);
+            if(isNaN(minutes)) return null;
+            milliseconds = minutes * 60 * 1000;
+        }
+        return negative ? -milliseconds : milliseconds;
+    }
+
+    function addManualTime(id) {
+        const timer = timers.find(t => t.id === id);
+        if(!timer) return;
+        const input = document.getElementById(`manual-input-${id}`);
+        const duration = parseTimeInput(input.value);
+        if(duration === null || duration === 0) return;
+
+        history.push({
+            id: Date.now().toString(),
+            timerId: id,
+            timerName: timer.name,
+            type: "manual",
+            duration: duration,
+            timestamp: Date.now()
+        });
+        input.value = "";
+        toggleEdit(id);
+        saveState();
+        renderTimers();
+    }
+
+	function showToast(message, isError = false) {
+		const toast = document.createElement("div");
+		toast.className = `toast${isError ? " error" : ""}`;
+		toast.textContent = message;
+
+		document.body.appendChild(toast);
+
+		requestAnimationFrame(() => {
+			toast.classList.add("show");
+		});
+
+		setTimeout(() => {
+			toast.classList.remove("show");
+			setTimeout(() => toast.remove(), 300);
+		}, 2500);
+	}
+
+    function renderTimers() {
+        const container = document.getElementById("timers-container");
+        if (timers.length === 0) {
+            container.innerHTML = `<div class="empty">No timers yet. Add an activity above.</div>`;
+            return;
+        }
+
+        // Sort timers:
+        // 1. Active timers come first
+        // 2. Then by lastRun (most recent first)
+        const sortedTimers = [...timers].sort((a, b) => {
+            if (a.isActive !== b.isActive) {
+                return a.isActive ? -1 : 1;
+            }
+            return (b.lastRun || 0) - (a.lastRun || 0);
+        });
+
+        container.innerHTML = sortedTimers.map(timer => `
+                <div class="timer-card ${timer.isActive ? 'running' : ''}">
+                    <div style="flex: 1;">
+                        <span class="timer-name">${timer.name}</span>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span class="time-display" id="display-${timer.id}">${formatTime(getDisplayTime(timer))}</span>
+                            ${!timer.isActive ? `<button class="icon-btn" onclick="toggleEdit('${timer.id}')" title="Add time">✎</button>` : ''}
+                        </div>
+                    </div>
+                    
+                    <div class="controls">
+                        <button class="btn ${timer.isActive ? "btn-stop" : "btn-start"}" onclick="toggleTimer('${timer.id}')">
+                            ${timer.isActive ? "Stop" : "Start"}
+                        </button>
+                        <button class="icon-btn" onclick="deleteTimer('${timer.id}')" title="Delete">×</button>
+                    </div>
+
+                    <div id="edit-form-${timer.id}" class="edit-form" style="width: 100%;">
+                        <input id="manual-input-${timer.id}" placeholder="+ HH:MM:SS">
+                        <button class="btn-start" onclick="addManualTime('${timer.id}')">Add</button>
+                        <button class="btn-stop" onclick="toggleEdit('${timer.id}')">×</button>
+                    </div>
+                </div>
+            `).join("");
+    }
+
+    function updateTimers() {
+        timers.filter(t => t.isActive).forEach(t => {
+            const el = document.getElementById(`display-${t.id}`);
+            if(el) el.textContent = formatTime(getDisplayTime(t));
+        });
+    }
+
+    setInterval(updateTimers, 100);
+    renderTimers();
+</script>
+        <button class="btn-io" onclick="exportData()">📤 Export</button>
+        <button class="btn-io" onclick="document.getElementById('import-file').click()">📥 Import</button>
+        <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(event)">
+		<button class="btn-clear" onclick="clearAllData()">Clear All Data</button>
+</body>
+</html>
