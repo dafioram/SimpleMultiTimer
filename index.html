@@ -142,9 +142,13 @@
 <div id="timers-container"></div>
 
 <script>
-    if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("/SimpleMultiTimer/sw.js", {
-            scope: "/SimpleMultiTimer/"
+	if ("serviceWorker" in navigator) {
+        // Strip trailing slashes or /index.html to get the clean base directory
+        const basePath = window.location.pathname.replace(/\/index\.html$/, '').replace(/\/$/, '');
+        
+        // Register dynamically based on the environment
+        navigator.serviceWorker.register(`${basePath}/sw.js`, { 
+            scope: `${basePath}/` 
         }).catch(console.error);
     }
 

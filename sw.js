@@ -1,12 +1,14 @@
-const CACHE_NAME = "multi-timer-v1";
+const CACHE_NAME = "multi-timer-v2";
+
+const basePath = self.location.pathname.replace('/sw.js', '');
 
 const FILES = [
-    "/SimpleMultiTimer/",
-    "/SimpleMultiTimer/index.html",
-    "/SimpleMultiTimer/history.html",
-    "/SimpleMultiTimer/manifest.json",
-    "/SimpleMultiTimer/icons/icon-192.png",
-    "/SimpleMultiTimer/icons/icon-512.png"
+    `${basePath}/`,
+    `${basePath}/index.html`,
+    `${basePath}/history.html`,
+    `${basePath}/manifest.json`,
+    `${basePath}/icons/icon-192.png`,
+    `${basePath}/icons/icon-512.png`
 ];
 
 
