@@ -41,6 +41,32 @@
         
 		.btn-delete { background: none; color: var(--accent); border: none; cursor: pointer; font-size: 1.5rem; padding: 0 5px; }
         .btn-delete:hover { opacity: 0.8; }
+
+		.toast {
+			position: fixed;
+			bottom: 20px;
+			left: 50%;
+			transform: translateX(-50%) translateY(20px);
+			background: #2c2c2c;
+			color: white;
+			padding: 12px 18px;
+			border-radius: 8px;
+			border-left: 4px solid var(--success);
+			box-shadow: 0 4px 12px rgba(0,0,0,.4);
+			opacity: 0;
+			transition: opacity .3s ease, transform .3s ease;
+			z-index: 9999;
+			pointer-events: none;
+		}
+
+		.toast.show {
+			opacity: 1;
+			transform: translateX(-50%) translateY(0);
+		}
+
+		.toast.error {
+			border-left-color: var(--danger);
+		}
 		
         @media (max-width: 600px) {
             .hide-mobile { display: none; }
@@ -67,7 +93,49 @@
     </table>
 
     <script>
-        let history = JSON.parse(localStorage.getItem('history')) || [];
+        function showToast(message, isError = false) {
+            const toast = document.createElement("div");
+            toast.className = `toast${isError ? " error" : ""}`;
+            toast.textContent = message;
+
+            document.body.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.classList.add("show");
+            });
+
+            setTimeout(() => {
+                toast.classList.remove("show");
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+
+        function loadState(key) {
+            const raw = localStorage.getItem(key);
+            if (!raw) return [];
+            try {
+                return JSON.parse(raw);
+            } catch (err) {
+                console.error(`Corrupted "${key}" data:`, err);
+                // Preserve the bad data instead of silently discarding it
+                localStorage.setItem(`${key}_corrupted_${Date.now()}`, raw);
+                localStorage.removeItem(key);
+                showToast(`Your saved ${key} was corrupted and has been reset. A backup was kept.`, true);
+                return [];
+            }
+        }
+
+        let history = loadState('history');
+
+        // In case this page is opened directly (e.g. bookmarked or deep-linked)
+        // without index.html having run first.
+        async function ensurePersistentStorage() {
+            if (navigator.storage?.persist) {
+                const already = await navigator.storage.persisted();
+                if (!already) await navigator.storage.persist();
+            }
+        }
+        ensurePersistentStorage();
 
         function formatTime(ms) {
             const isNegative = ms < 0;
@@ -91,8 +159,15 @@
 
         function deleteLog(logId) {
             if (!confirm("Delete this entry?")) return;
-            history = history.filter(h => h.id !== logId);
-            localStorage.setItem('history', JSON.stringify(history));
+            const updated = history.filter(h => h.id !== logId);
+            try {
+                localStorage.setItem('history', JSON.stringify(updated));
+            } catch (err) {
+                console.error(err);
+                showToast("❌ Couldn't delete — storage error.", true);
+                return;
+            }
+            history = updated;
             renderHistory();
         }
 

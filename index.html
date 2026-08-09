@@ -152,8 +152,37 @@
         }).catch(console.error);
     }
 
-    let timers = JSON.parse(localStorage.getItem("timers")) || [];
-    let history = JSON.parse(localStorage.getItem("history")) || [];
+    function loadState(key) {
+        const raw = localStorage.getItem(key);
+        if (!raw) return [];
+        try {
+            return JSON.parse(raw);
+        } catch (err) {
+            console.error(`Corrupted "${key}" data:`, err);
+            // Preserve the bad data instead of silently discarding it
+            localStorage.setItem(`${key}_corrupted_${Date.now()}`, raw);
+            localStorage.removeItem(key);
+            showToast(`Your saved ${key} was corrupted and has been reset. A backup was kept.`, true);
+            return [];
+        }
+    }
+
+    let timers = loadState("timers");
+    let history = loadState("history");
+    let lastQuotaCheck = 0;
+
+    async function checkStorageHealth() {
+        if (navigator.storage?.persist) {
+            const already = await navigator.storage.persisted();
+            if (!already) await navigator.storage.persist();
+        }
+        if (navigator.storage?.estimate) {
+            const { usage, quota } = await navigator.storage.estimate();
+            if (quota && usage / quota > 0.8) {
+                showToast("Storage is getting full — consider exporting a backup.", true);
+            }
+        }
+    }
 
 	function saveState() {
 		try {
@@ -168,6 +197,17 @@
 			} else {
 				console.error(err);
 			}
+			return;
+		}
+
+		// Re-check quota at most once every 5 minutes, rather than on every save
+		if (navigator.storage?.estimate && Date.now() - lastQuotaCheck > 5 * 60 * 1000) {
+			lastQuotaCheck = Date.now();
+			navigator.storage.estimate().then(({ usage, quota }) => {
+				if (quota && usage / quota > 0.8) {
+					showToast("Storage is getting full — consider exporting a backup.", true);
+				}
+			});
 		}
 	}
 
@@ -291,6 +331,10 @@
         input.value = "";
         saveState();
         renderTimers();
+
+        // First timer ever created is a strong engagement signal —
+        // a good moment to (re)request persistent storage.
+        if (timers.length === 1) checkStorageHealth();
     }
 
     function deleteTimer(id) {
@@ -435,6 +479,7 @@
 
     setInterval(updateTimers, 100);
     renderTimers();
+    checkStorageHealth();
 </script>
         <button class="btn-io" onclick="exportData()">📤 Export</button>
         <button class="btn-io" onclick="document.getElementById('import-file').click()">📥 Import</button>
