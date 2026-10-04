@@ -92,74 +92,34 @@
         <tbody id="history-body"></tbody>
     </table>
 
+    <script src="common.js"></script>
     <script>
-        function showToast(message, isError = false) {
-            const toast = document.createElement("div");
-            toast.className = `toast${isError ? " error" : ""}`;
-            toast.textContent = message;
-
-            document.body.appendChild(toast);
-
-            requestAnimationFrame(() => {
-                toast.classList.add("show");
-            });
-
-            setTimeout(() => {
-                toast.classList.remove("show");
-                setTimeout(() => toast.remove(), 300);
-            }, 2500);
-        }
-
-        function loadState(key) {
-            const raw = localStorage.getItem(key);
-            if (!raw) return [];
-            try {
-                return JSON.parse(raw);
-            } catch (err) {
-                console.error(`Corrupted "${key}" data:`, err);
-                // Preserve the bad data instead of silently discarding it
-                localStorage.setItem(`${key}_corrupted_${Date.now()}`, raw);
-                localStorage.removeItem(key);
-                showToast(`Your saved ${key} was corrupted and has been reset. A backup was kept.`, true);
-                return [];
-            }
-        }
-
         let history = loadState('history');
+
+        // Pick up changes made in another tab (e.g. a timer stopped on the main page)
+        onStoredDataChange(() => {
+            history = loadState('history');
+            renderHistory();
+        });
 
         // In case this page is opened directly (e.g. bookmarked or deep-linked)
         // without index.html having run first.
-        async function ensurePersistentStorage() {
-            if (navigator.storage?.persist) {
-                const already = await navigator.storage.persisted();
-                if (!already) await navigator.storage.persist();
-            }
-        }
         ensurePersistentStorage();
 
-        function formatTime(ms) {
-            const isNegative = ms < 0;
-            const absMs = Math.abs(ms);
-            const totalSeconds = Math.floor(absMs / 1000);
-            const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-            const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
-            const s = String(totalSeconds % 60).padStart(2, '0');
-            return `${isNegative ? '-' : ''}${h}:${m}:${s}`;
-        }
-
-        // Updated format to YYYY-MM-DD HH:MM (as shown in image)
+        // YYYY-MM-DD HH:MM
         function formatDate(timestamp) {
             const date = new Date(timestamp);
-            return date.getFullYear() + '-' + 
-                   String(date.getMonth() + 1).padStart(2, '0') + '-' + 
-                   String(date.getDate()).padStart(2, '0') + ' ' + 
-                   String(date.getHours()).padStart(2, '0') + ':' + 
+            return date.getFullYear() + '-' +
+                   String(date.getMonth() + 1).padStart(2, '0') + '-' +
+                   String(date.getDate()).padStart(2, '0') + ' ' +
+                   String(date.getHours()).padStart(2, '0') + ':' +
                    String(date.getMinutes()).padStart(2, '0');
         }
 
         function deleteLog(logId) {
             if (!confirm("Delete this entry?")) return;
-            const updated = history.filter(h => h.id !== logId);
+            // Re-read first so we never write back a stale copy
+            const updated = loadState('history').filter(h => h.id !== logId);
             try {
                 localStorage.setItem('history', JSON.stringify(updated));
             } catch (err) {
@@ -175,18 +135,25 @@
             const tbody = document.getElementById('history-body');
             const sortedHistory = [...history].sort((a, b) => b.timestamp - a.timestamp);
 
-            tbody.innerHTML = sortedHistory.map(log => `
+            tbody.innerHTML = sortedHistory.map(log => {
+                const type = log.type === 'session' ? 'session' : 'manual';
+                return `
                 <tr>
-                    <td style="font-weight: 500;">${log.timerName}</td>
-                    <td><span class="tag tag-${log.type}">${log.type.toUpperCase()}</span></td>
+                    <td style="font-weight: 500;">${escapeHtml(log.timerName)}</td>
+                    <td><span class="tag tag-${type}">${type.toUpperCase()}</span></td>
                     <td class="hide-mobile date-text">${formatDate(log.timestamp)}</td>
                     <td class="duration-text">${log.duration > 0 ? '+' : ''}${formatTime(log.duration)}</td>
                     <td style="text-align: left;">
-                        <button class="btn-delete" onclick="deleteLog('${log.id}')" title="Delete">×</button>
+                        <button type="button" class="btn-delete" data-id="${escapeHtml(log.id)}" title="Delete" aria-label="Delete entry">×</button>
                     </td>
-                </tr>
-            `).join('');
+                </tr>`;
+            }).join('');
         }
+
+        document.getElementById('history-body').addEventListener('click', event => {
+            const button = event.target.closest('.btn-delete');
+            if (button) deleteLog(button.dataset.id);
+        });
 
         renderHistory();
     </script>

@@ -20,39 +20,38 @@
 
         nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
         h1 { margin: 0; color: #fff; font-size: 1.8rem; }
-        .header-right { display: flex; align-items: center; flex-wrap: wrap; gap: 15px; }
-        .header-right a { color: var(--accent); text-decoration: none; font-weight: bold; }
-        
+        .header-right { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .header-right a { color: var(--accent); text-decoration: none; font-weight: bold; margin-right: 5px; }
+
         .btn-clear { background: #4b1f24; color: #ff9aa8; border: 1px solid var(--danger); padding: 8px 12px; border-radius: 8px; cursor: pointer; }
-        
-        /* New buttons for Import/Export */
+
         .btn-io { background: #2c2c2c; color: var(--text); border: 1px solid #444; padding: 8px 12px; border-radius: 8px; cursor: pointer; transition: 0.2s; font-weight: bold; }
         .btn-io:hover { border-color: var(--accent); color: var(--accent); }
-        
-        .add-form { display: flex; gap: 10px; margin-bottom: 20px; }
+
+        .add-form { display: flex; gap: 10px; margin: 0 0 20px; }
 
         .add-form input[type="text"] {
-            flex-grow: 1; 
-            padding: 15px; 
-            border-radius: 8px; 
-            border: none; 
-            font-size: 16px; 
-            background: #2c2c2c; 
-            color: white; 
+            flex-grow: 1;
+            padding: 15px;
+            border-radius: 8px;
+            border: none;
+            font-size: 16px;
+            background: #2c2c2c;
+            color: white;
             outline: none;
         }
 
         button.add-btn {
-            background-color: #bb86fc; 
-            border: none; 
-            padding: 5px 20px; 
-            border-radius: 8px; 
-            color: #000; 
-            font-weight: bold; 
+            background-color: #bb86fc;
+            border: none;
+            padding: 5px 20px;
+            border-radius: 8px;
+            color: #000;
+            font-weight: bold;
             font-size: 26px;
-            cursor: pointer; 
+            cursor: pointer;
             transition: background-color 0.2s;
-            line-height: 1;    
+            line-height: 1;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -62,38 +61,40 @@
             background-color: #d7b7fd;
         }
 
-		.toast {
-			position: fixed;
-			bottom: 20px;
-			left: 50%;
-			transform: translateX(-50%) translateY(20px);
-			background: #2c2c2c;
-			color: white;
-			padding: 12px 18px;
-			border-radius: 8px;
-			border-left: 4px solid var(--success);
-			box-shadow: 0 4px 12px rgba(0,0,0,.4);
-			opacity: 0;
-			transition: opacity .3s ease, transform .3s ease;
-			z-index: 9999;
-			pointer-events: none;
-		}
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: #2c2c2c;
+            color: white;
+            padding: 12px 18px;
+            border-radius: 8px;
+            border-left: 4px solid var(--success);
+            box-shadow: 0 4px 12px rgba(0,0,0,.4);
+            opacity: 0;
+            transition: opacity .3s ease, transform .3s ease;
+            z-index: 9999;
+            pointer-events: none;
+        }
 
-		.toast.show {
-			opacity: 1;
-			transform: translateX(-50%) translateY(0);
-		}
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
 
-		.toast.error {
-			border-left-color: var(--danger);
-		}
+        .toast.error {
+            border-left-color: var(--danger);
+        }
 
-        .timer-card { background: var(--card-bg); border-left: 6px solid #333; border-radius: 12px; padding: 18px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .timer-card { background: var(--card-bg); border-left: 6px solid #333; border-radius: 12px; padding: 18px; margin-bottom: 15px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; }
         .timer-card.running { background: #1b2e23; border-left-color: #00e676; }
-        
-        .timer-name { display: block; color: var(--accent); font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; }
+
+        .timer-info { flex: 1; }
+        .timer-name { display: block; color: var(--accent); font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; overflow-wrap: anywhere; }
+        .time-row { display: flex; align-items: center; gap: 10px; }
         .time-display { font-family: monospace; font-size: 1.8rem; font-weight: bold; color: white; }
-        
+
         .controls { display: flex; align-items: center; gap: 10px; }
         button { cursor: pointer; border: none; border-radius: 8px; font-weight: bold; transition: .2s; }
         .btn { width: 90px; padding: 12px 0; font-size: 15px; }
@@ -101,25 +102,26 @@
         .btn-stop { background: var(--danger); color: black; }
         .icon-btn { background: none; color: #666; font-size: 22px; padding: 5px 8px; }
         .icon-btn:hover { color: var(--accent); }
-        
-        .edit-form { display: none; margin-top: 12px; align-items: center; gap: 8px; }
-        .edit-form input { width: 160px; padding: 8px 10px; background: #292929; border: 1px solid #444; color: white; border-radius: 6px; font-family: monospace; }
+
+        .edit-form { display: none; width: 100%; margin: 12px 0 0; align-items: center; gap: 8px; }
+        .edit-form.open { display: flex; }
+        .edit-form input { width: 180px; padding: 8px 10px; background: #292929; border: 1px solid #444; color: white; border-radius: 6px; font-family: monospace; font-size: 16px; }
         .edit-form button {
-            padding: 12px 20px; 
-            font-size: 16px;    
-            min-width: 60px;    
+            padding: 12px 20px;
+            font-size: 16px;
+            min-width: 60px;
         }
-        
+
         .empty {
-			text-align: center;
-			color: #777;
-			margin-top: 60px;
-			margin-bottom: 20px;
-		}
+            text-align: center;
+            color: #777;
+            margin-top: 60px;
+            margin-bottom: 20px;
+        }
 
         @media(max-width: 700px) {
-            .timer-card { flex-wrap: wrap; gap: 10px; }
-            .timer-info { flex: 1; min-width: 200px; }
+            .timer-card { gap: 10px; }
+            .timer-info { min-width: 200px; }
             .controls { gap: 5px; }
         }
     </style>
@@ -129,53 +131,46 @@
 <nav>
     <h1>Activity Tracker</h1>
     <div class="header-right">
-        
         <a href="history.html">📜 View History</a>
+        <button type="button" class="btn-io" data-action="export">📤 Export</button>
+        <button type="button" class="btn-io" data-action="import">📥 Import</button>
+        <input type="file" id="import-file" accept=".json,application/json" hidden>
+        <button type="button" class="btn-clear" data-action="clear-all">Clear All Data</button>
     </div>
 </nav>
 
-<div class="add-form">
-    <input id="new-timer-name" type="text" placeholder="New Activity..." autocomplete="off">
-    <button class="add-btn" onclick="createTimer()">+</button>
-</div>
+<form class="add-form" id="add-form">
+    <input id="new-timer-name" type="text" placeholder="New Activity..." autocomplete="off" enterkeyhint="done" aria-label="New activity name">
+    <button type="submit" class="add-btn" aria-label="Add activity">+</button>
+</form>
 
 <div id="timers-container"></div>
 
+<script src="common.js"></script>
 <script>
-	if ("serviceWorker" in navigator) {
+    if ("serviceWorker" in navigator) {
         // Strip trailing slashes or /index.html to get the clean base directory
         const basePath = window.location.pathname.replace(/\/index\.html$/, '').replace(/\/$/, '');
-        
-        // Register dynamically based on the environment
-        navigator.serviceWorker.register(`${basePath}/sw.js`, { 
-            scope: `${basePath}/` 
-        }).catch(console.error);
-    }
 
-    function loadState(key) {
-        const raw = localStorage.getItem(key);
-        if (!raw) return [];
-        try {
-            return JSON.parse(raw);
-        } catch (err) {
-            console.error(`Corrupted "${key}" data:`, err);
-            // Preserve the bad data instead of silently discarding it
-            localStorage.setItem(`${key}_corrupted_${Date.now()}`, raw);
-            localStorage.removeItem(key);
-            showToast(`Your saved ${key} was corrupted and has been reset. A backup was kept.`, true);
-            return [];
-        }
+        navigator.serviceWorker.register(`${basePath}/sw.js`, {
+            scope: `${basePath}/`
+        }).catch(console.error);
     }
 
     let timers = loadState("timers");
     let history = loadState("history");
     let lastQuotaCheck = 0;
 
+    // Keep this tab in step with changes made in other tabs (e.g. deleting
+    // entries on the History page), so a later save can't resurrect them.
+    onStoredDataChange(() => {
+        timers = loadState("timers");
+        history = loadState("history");
+        renderTimers();
+    });
+
     async function checkStorageHealth() {
-        if (navigator.storage?.persist) {
-            const already = await navigator.storage.persisted();
-            if (!already) await navigator.storage.persist();
-        }
+        await ensurePersistentStorage();
         if (navigator.storage?.estimate) {
             const { usage, quota } = await navigator.storage.estimate();
             if (quota && usage / quota > 0.8) {
@@ -184,36 +179,33 @@
         }
     }
 
-	function saveState() {
-		try {
-			localStorage.setItem("timers", JSON.stringify(timers));
-			localStorage.setItem("history", JSON.stringify(history));
-		} catch (err) {
-			if (err.name === "QuotaExceededError") {
-				showToast(
-					"Storage is full. Please export your data and clear old history.",
-					true
-				);
-			} else {
-				console.error(err);
-			}
-			return;
-		}
+    function saveState() {
+        try {
+            localStorage.setItem("timers", JSON.stringify(timers));
+            localStorage.setItem("history", JSON.stringify(history));
+        } catch (err) {
+            if (err.name === "QuotaExceededError") {
+                showToast("Storage is full. Please export your data and clear old history.", true);
+            } else {
+                console.error(err);
+            }
+            return;
+        }
 
-		// Re-check quota at most once every 5 minutes, rather than on every save
-		if (navigator.storage?.estimate && Date.now() - lastQuotaCheck > 5 * 60 * 1000) {
-			lastQuotaCheck = Date.now();
-			navigator.storage.estimate().then(({ usage, quota }) => {
-				if (quota && usage / quota > 0.8) {
-					showToast("Storage is getting full — consider exporting a backup.", true);
-				}
-			});
-		}
-	}
+        // Re-check quota at most once every 5 minutes, rather than on every save
+        if (navigator.storage?.estimate && Date.now() - lastQuotaCheck > 5 * 60 * 1000) {
+            lastQuotaCheck = Date.now();
+            navigator.storage.estimate().then(({ usage, quota }) => {
+                if (quota && usage / quota > 0.8) {
+                    showToast("Storage is getting full — consider exporting a backup.", true);
+                }
+            });
+        }
+    }
 
-	function exportData() {
+    function exportData() {
         const data = {
-            version: 1, // Add version tracker
+            version: 1,
             timers: timers,
             history: history
         };
@@ -221,74 +213,91 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        
+
         const date = new Date().toISOString().split('T')[0];
-		const ver = String(data.version);
-        a.download = `timer_backup_v${ver}_${date}.json`;
-        
+        a.download = `timer_backup_v${data.version}_${date}.json`;
+
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-		showToast(`Backup exported: ${a.download}`);
+        showToast(`Backup exported: ${a.download}`);
     }
 
-	function importData(event) {
-        const file = event.target.files[0];
+    // Keeps only well-formed records from an imported backup, coercing
+    // fields to the types the app expects.
+    function sanitizeImport(data) {
+        const isNum = Number.isFinite;
+
+        const cleanTimers = data.timers
+            .filter(t => t && t.id != null && typeof t.name === "string" && t.name.trim())
+            .map(t => {
+                const running = !!t.isActive && isNum(t.startTime);
+                return {
+                    id: String(t.id),
+                    name: t.name.trim(),
+                    isActive: running,
+                    startTime: running ? t.startTime : null,
+                    lastRun: isNum(t.lastRun) ? t.lastRun : 0
+                };
+            });
+
+        const cleanHistory = data.history
+            .filter(h => h && h.id != null && h.timerId != null && isNum(h.duration) && isNum(h.timestamp))
+            .map(h => ({
+                id: String(h.id),
+                timerId: String(h.timerId),
+                timerName: typeof h.timerName === "string" ? h.timerName : "",
+                type: h.type === "session" ? "session" : "manual",
+                duration: h.duration,
+                timestamp: h.timestamp
+            }));
+
+        const dropped = (data.timers.length - cleanTimers.length) + (data.history.length - cleanHistory.length);
+        return { timers: cleanTimers, history: cleanHistory, dropped };
+    }
+
+    function importData(event) {
+        const input = event.target;
+        const file = input.files[0];
         if (!file) return;
 
         const reader = new FileReader();
         reader.onload = function(e) {
             try {
-                let importedData = JSON.parse(e.target.result);
-                
-                // Validate basic structure
-                if (importedData.timers && importedData.history) {
-                    if(!confirm("This will overwrite your current timers and history. Are you sure?")) {
-                        event.target.value = ''; 
-                        return;
-                    }
-                    
-                    // Check version and migrate if necessary
-                    const dataVersion = importedData.version || 1; 
-                    
-                    if (dataVersion === 1) {
-                        // Current format, no changes needed
-                        timers = importedData.timers;
-                        history = importedData.history;
-                    }
-                    // else if (dataVersion === 2) {
-                    //     timers = migrateV2Timers(importedData.timers);
-                    //     history = migrateV2History(importedData.history);
-                    // }
-                    else {
-                        alert("Warning: This backup is from a newer version of the app and might not load correctly.");
-                        timers = importedData.timers;
-                        history = importedData.history;
-                    }
+                const importedData = JSON.parse(e.target.result);
 
-                    saveState();
-                    renderTimers();
-                    showToast("✅ Data imported successfully!");
-                } else {
+                if (!importedData || !Array.isArray(importedData.timers) || !Array.isArray(importedData.history)) {
                     showToast("❌ Error: Invalid backup file structure.", true);
+                    return;
                 }
+
+                if (!confirm("This will overwrite your current timers and history. Are you sure?")) return;
+
+                // Check version and migrate if necessary
+                const dataVersion = importedData.version || 1;
+                if (dataVersion !== 1) {
+                    // else if (dataVersion === 2) { ...migrate... }
+                    alert("Warning: This backup is from a newer version of the app and might not load correctly.");
+                }
+
+                const clean = sanitizeImport(importedData);
+                timers = clean.timers;
+                history = clean.history;
+
+                saveState();
+                renderTimers();
+                showToast(clean.dropped
+                    ? `✅ Imported. Skipped ${clean.dropped} invalid record${clean.dropped === 1 ? "" : "s"}.`
+                    : "✅ Data imported successfully!");
             } catch (err) {
                 showToast("❌ Error parsing the JSON file.", true);
                 console.error(err);
+            } finally {
+                input.value = '';
             }
-            event.target.value = '';
         };
         reader.readAsText(file);
-    }
-
-    function formatTime(ms = 0) {
-        ms = Number(ms) || 0;
-        const total = Math.floor(ms / 1000);
-        const h = String(Math.floor(total / 3600)).padStart(2, "0");
-        const m = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
-        const s = String(total % 60).padStart(2, "0");
-        return `${h}:${m}:${s}`;
     }
 
     function getBankedTime(id) {
@@ -297,17 +306,24 @@
             .reduce((sum, h) => sum + (h.duration || 0), 0);
     }
 
+    // Totals never show below zero (older data may contain subtractions).
     function getDisplayTime(timer) {
-        return getBankedTime(timer.id) + (timer.isActive ? (Date.now() - timer.startTime) : 0);
+        return Math.max(0, getBankedTime(timer.id) + (timer.isActive ? (Date.now() - timer.startTime) : 0));
     }
 
-    function toggleEdit(id) {
-        const form = document.getElementById(`edit-form-${id}`);
-        if(form) form.style.display = form.style.display === "flex" ? "none" : "flex";
+    function findCard(id) {
+        return document.querySelector(`.timer-card[data-id="${CSS.escape(id)}"]`);
+    }
+
+    function toggleEdit(id, open) {
+        const form = findCard(id)?.querySelector(".edit-form");
+        if (!form) return;
+        const isOpen = form.classList.toggle("open", open);
+        if (isOpen) form.elements.amount.focus();
     }
 
     function clearAllData() {
-        if(!confirm("Delete ALL timers and ALL history?")) return;
+        if (!confirm("Delete ALL timers and ALL history?")) return;
         localStorage.removeItem("timers");
         localStorage.removeItem("history");
         timers = [];
@@ -318,13 +334,11 @@
     function createTimer() {
         const input = document.getElementById("new-timer-name");
         const name = input.value.trim();
-        if(!name) return;
-		const timer_id = Date.now(); // crypto.randomUUID()
-		const timer_id_str = timer_id.toString();
-        timers.push({ 
-            id: timer_id_str, 
-            name, 
-            isActive: false, 
+        if (!name) return;
+        timers.push({
+            id: Date.now().toString(),
+            name,
+            isActive: false,
             startTime: null,
             lastRun: Date.now()
         });
@@ -339,21 +353,30 @@
 
     function deleteTimer(id) {
         const timer = timers.find(t => t.id === id);
-        if(!timer || !confirm(`Delete "${timer.name}"?`)) return;
+        if (!timer) return;
+
+        const count = history.filter(h => h.timerId === id).length;
+        const entries = `${count} history entr${count === 1 ? "y" : "ies"}`;
+        const message = count
+            ? `Delete "${timer.name}" and all ${entries}? This can't be undone.`
+            : `Delete "${timer.name}"?`;
+        if (!confirm(message)) return;
+
         timers = timers.filter(t => t.id !== id);
         history = history.filter(h => h.timerId !== id);
         saveState();
         renderTimers();
+        showToast(count ? `Deleted "${timer.name}" and ${entries}.` : `Deleted "${timer.name}".`);
     }
 
     function toggleTimer(id) {
         const timer = timers.find(t => t.id === id);
-        if(!timer) return;
+        if (!timer) return;
 
         // Part of timer order is most recently toggled
-        timer.lastRun = Date.now(); 
+        timer.lastRun = Date.now();
 
-        if(timer.isActive) {
+        if (timer.isActive) {
             history.push({
                 id: Date.now().toString(),
                 timerId: id,
@@ -372,29 +395,39 @@
         renderTimers();
     }
 
+    // Accepts an optional leading + followed by:
+    //   M        minutes          e.g. 30
+    //   M:SS     minutes:seconds  e.g. 1:30
+    //   H:MM:SS  hours:min:sec    e.g. 1:30:00
+    // Returns milliseconds, or null if the input isn't valid.
     function parseTimeInput(value) {
-        value = value.trim();
-        let negative = value.startsWith("-");
-        value = value.replace("+", "").replace("-", "");
-        let milliseconds = 0;
-        if(value.includes(":")) {
-            const parts = value.split(":").map(Number);
-            let seconds = (parts.length === 3) ? (parts[0]*3600 + parts[1]*60 + parts[2]) : (parts[0]*60 + parts[1]);
-            milliseconds = seconds * 1000;
+        const match = value.trim().match(/^\+?\s*(\d+)(?::(\d{1,2}))?(?::(\d{1,2}))?$/);
+        if (!match) return null;
+
+        const [, a, b, c] = match;
+        let seconds;
+        if (c !== undefined) {
+            if (Number(b) > 59 || Number(c) > 59) return null;
+            seconds = Number(a) * 3600 + Number(b) * 60 + Number(c);
+        } else if (b !== undefined) {
+            if (Number(b) > 59) return null;
+            seconds = Number(a) * 60 + Number(b);
         } else {
-            const minutes = parseInt(value);
-            if(isNaN(minutes)) return null;
-            milliseconds = minutes * 60 * 1000;
+            seconds = Number(a) * 60;
         }
-        return negative ? -milliseconds : milliseconds;
+        return seconds * 1000;
     }
 
-    function addManualTime(id) {
+    function addManualTime(id, input) {
         const timer = timers.find(t => t.id === id);
-        if(!timer) return;
-        const input = document.getElementById(`manual-input-${id}`);
+        if (!timer) return;
+
         const duration = parseTimeInput(input.value);
-        if(duration === null || duration === 0) return;
+        if (duration === null) {
+            showToast("Use minutes (30), M:SS (1:30) or H:MM:SS (1:30:00).", true);
+            return;
+        }
+        if (duration === 0) return;
 
         history.push({
             id: Date.now().toString(),
@@ -405,30 +438,24 @@
             timestamp: Date.now()
         });
         input.value = "";
-        toggleEdit(id);
+        toggleEdit(id, false);
         saveState();
         renderTimers();
     }
 
-	function showToast(message, isError = false) {
-		const toast = document.createElement("div");
-		toast.className = `toast${isError ? " error" : ""}`;
-		toast.textContent = message;
-
-		document.body.appendChild(toast);
-
-		requestAnimationFrame(() => {
-			toast.classList.add("show");
-		});
-
-		setTimeout(() => {
-			toast.classList.remove("show");
-			setTimeout(() => toast.remove(), 300);
-		}, 2500);
-	}
-
     function renderTimers() {
         const container = document.getElementById("timers-container");
+
+        // Remember open "add time" forms so a re-render (e.g. from another
+        // tab's change) doesn't close one the user is typing in.
+        const openForms = new Map();
+        container.querySelectorAll(".edit-form.open").forEach(form => {
+            openForms.set(form.closest(".timer-card").dataset.id, {
+                value: form.elements.amount.value,
+                focused: form.contains(document.activeElement)
+            });
+        });
+
         if (timers.length === 0) {
             container.innerHTML = `<div class="empty">No timers yet. Add an activity above.</div>`;
             return;
@@ -444,46 +471,89 @@
             return (b.lastRun || 0) - (a.lastRun || 0);
         });
 
-        container.innerHTML = sortedTimers.map(timer => `
-                <div class="timer-card ${timer.isActive ? 'running' : ''}">
-                    <div style="flex: 1;">
-                        <span class="timer-name">${timer.name}</span>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <span class="time-display" id="display-${timer.id}">${formatTime(getDisplayTime(timer))}</span>
-                            ${!timer.isActive ? `<button class="icon-btn" onclick="toggleEdit('${timer.id}')" title="Add time">✎</button>` : ''}
+        container.innerHTML = sortedTimers.map(timer => {
+            const name = escapeHtml(timer.name);
+            return `
+                <div class="timer-card ${timer.isActive ? 'running' : ''}" data-id="${escapeHtml(timer.id)}">
+                    <div class="timer-info">
+                        <span class="timer-name">${name}</span>
+                        <div class="time-row">
+                            <span class="time-display">${formatTime(getDisplayTime(timer))}</span>
+                            ${!timer.isActive ? `<button type="button" class="icon-btn" data-action="edit" title="Add time" aria-label="Add time to ${name}">✎</button>` : ''}
                         </div>
                     </div>
-                    
+
                     <div class="controls">
-                        <button class="btn ${timer.isActive ? "btn-stop" : "btn-start"}" onclick="toggleTimer('${timer.id}')">
+                        <button type="button" class="btn ${timer.isActive ? "btn-stop" : "btn-start"}" data-action="toggle">
                             ${timer.isActive ? "Stop" : "Start"}
                         </button>
-                        <button class="icon-btn" onclick="deleteTimer('${timer.id}')" title="Delete">×</button>
+                        <button type="button" class="icon-btn" data-action="delete" title="Delete" aria-label="Delete ${name}">×</button>
                     </div>
 
-                    <div id="edit-form-${timer.id}" class="edit-form" style="width: 100%;">
-                        <input id="manual-input-${timer.id}" placeholder="+ HH:MM:SS">
-                        <button class="btn-start" onclick="addManualTime('${timer.id}')">Add</button>
-                        <button class="btn-stop" onclick="toggleEdit('${timer.id}')">×</button>
-                    </div>
+                    <form class="edit-form">
+                        <input name="amount" placeholder="30, 1:30, 1:30:00" autocomplete="off" enterkeyhint="done" aria-label="Time to add">
+                        <button type="submit" class="btn-start">Add</button>
+                        <button type="button" class="btn-stop" data-action="edit" aria-label="Cancel">×</button>
+                    </form>
                 </div>
-            `).join("");
+            `;
+        }).join("");
+
+        openForms.forEach((state, id) => {
+            const form = findCard(id)?.querySelector(".edit-form");
+            if (!form) return;
+            form.classList.add("open");
+            form.elements.amount.value = state.value;
+            if (state.focused) form.elements.amount.focus();
+        });
     }
 
     function updateTimers() {
         timers.filter(t => t.isActive).forEach(t => {
-            const el = document.getElementById(`display-${t.id}`);
-            if(el) el.textContent = formatTime(getDisplayTime(t));
+            const el = findCard(t.id)?.querySelector(".time-display");
+            if (el) el.textContent = formatTime(getDisplayTime(t));
         });
     }
+
+    // One set of listeners for everything, instead of inline onclick
+    // handlers with IDs pasted into JavaScript strings.
+    document.addEventListener("click", event => {
+        const button = event.target.closest("[data-action]");
+        if (!button) return;
+        const id = button.closest(".timer-card")?.dataset.id;
+
+        switch (button.dataset.action) {
+            case "toggle":    toggleTimer(id); break;
+            case "delete":    deleteTimer(id); break;
+            case "edit":      toggleEdit(id); break;
+            case "export":    exportData(); break;
+            case "import":    document.getElementById("import-file").click(); break;
+            case "clear-all": clearAllData(); break;
+        }
+    });
+
+    document.addEventListener("submit", event => {
+        event.preventDefault();
+        const form = event.target;
+        if (form.id === "add-form") {
+            createTimer();
+        } else if (form.classList.contains("edit-form")) {
+            addManualTime(form.closest(".timer-card").dataset.id, form.elements.amount);
+        }
+    });
+
+    // Escape closes an open "add time" form
+    document.addEventListener("keydown", event => {
+        if (event.key !== "Escape") return;
+        const form = event.target.closest?.(".edit-form.open");
+        if (form) toggleEdit(form.closest(".timer-card").dataset.id, false);
+    });
+
+    document.getElementById("import-file").addEventListener("change", importData);
 
     setInterval(updateTimers, 100);
     renderTimers();
     checkStorageHealth();
 </script>
-        <button class="btn-io" onclick="exportData()">📤 Export</button>
-        <button class="btn-io" onclick="document.getElementById('import-file').click()">📥 Import</button>
-        <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(event)">
-		<button class="btn-clear" onclick="clearAllData()">Clear All Data</button>
 </body>
 </html>
