@@ -443,7 +443,43 @@
         renderTimers();
     }
 
+    // Keep the screen awake while any timer is running. The browser drops the
+    // lock whenever the page is hidden, so it's re-requested on return.
+    let wakeLock = null;
+    let wakeLockPending = false;
+
+    function wakeLockWanted() {
+        return timers.some(t => t.isActive) && document.visibilityState === "visible";
+    }
+
+    async function syncWakeLock() {
+        if (!("wakeLock" in navigator) || wakeLockPending) return;
+
+        if (wakeLockWanted() && !wakeLock) {
+            wakeLockPending = true;
+            try {
+                const lock = await navigator.wakeLock.request("screen");
+                lock.addEventListener("release", () => { if (wakeLock === lock) wakeLock = null; });
+                wakeLock = lock;
+            } catch (err) {
+                // e.g. battery saver is on; the timers still work without it
+                console.warn("Wake lock unavailable:", err);
+            } finally {
+                wakeLockPending = false;
+            }
+            // Timers may have stopped while we were waiting
+            if (!wakeLockWanted()) syncWakeLock();
+        } else if (!wakeLockWanted() && wakeLock) {
+            const lock = wakeLock;
+            wakeLock = null;
+            lock.release();
+        }
+    }
+
+    document.addEventListener("visibilitychange", syncWakeLock);
+
     function renderTimers() {
+        syncWakeLock();
         const container = document.getElementById("timers-container");
 
         // Remember open "add time" forms so a re-render (e.g. from another
