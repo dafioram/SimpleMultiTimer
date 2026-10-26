@@ -148,17 +148,14 @@
 
 <script src="common.js"></script>
 <script>
-    if ("serviceWorker" in navigator) {
-        // Strip trailing slashes or /index.html to get the clean base directory
-        const basePath = window.location.pathname.replace(/\/index\.html$/, '').replace(/\/$/, '');
+    registerServiceWorker();
 
-        navigator.serviceWorker.register(`${basePath}/sw.js`, {
-            scope: `${basePath}/`
-        }).catch(console.error);
-    }
-
-    let timers = loadState("timers");
-    let history = loadState("history");
+    // Filled in once saved data has loaded (see the bottom of this script).
+    // Until then `ready` is false and buttons do nothing, so an early tap
+    // can't save an empty list over the real data.
+    let timers = [];
+    let history = [];
+    let ready = false;
     let lastQuotaCheck = 0;
 
     // Keep this tab in step with changes made in other tabs (e.g. deleting
@@ -171,7 +168,7 @@
 
     async function checkStorageHealth() {
         await ensurePersistentStorage();
-        if (navigator.storage?.estimate) {
+        if (!isNativeApp && navigator.storage?.estimate) {
             const { usage, quota } = await navigator.storage.estimate();
             if (quota && usage / quota > 0.8) {
                 showToast("Storage is getting full — consider exporting a backup.", true);
@@ -181,8 +178,8 @@
 
     function saveState() {
         try {
-            localStorage.setItem("timers", JSON.stringify(timers));
-            localStorage.setItem("history", JSON.stringify(history));
+            writeItem("timers", JSON.stringify(timers));
+            writeItem("history", JSON.stringify(history));
         } catch (err) {
             if (err.name === "QuotaExceededError") {
                 showToast("Storage is full. Please export your data and clear old history.", true);
@@ -193,7 +190,7 @@
         }
 
         // Re-check quota at most once every 5 minutes, rather than on every save
-        if (navigator.storage?.estimate && Date.now() - lastQuotaCheck > 5 * 60 * 1000) {
+        if (!isNativeApp && navigator.storage?.estimate && Date.now() - lastQuotaCheck > 5 * 60 * 1000) {
             lastQuotaCheck = Date.now();
             navigator.storage.estimate().then(({ usage, quota }) => {
                 if (quota && usage / quota > 0.8) {
@@ -209,19 +206,15 @@
             timers: timers,
             history: history
         };
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-
         const date = new Date().toISOString().split('T')[0];
-        a.download = `timer_backup_v${data.version}_${date}.json`;
+        const filename = `timer_backup_v${data.version}_${date}.json`;
 
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        showToast(`Backup exported: ${a.download}`);
+        saveTextFile(filename, JSON.stringify(data, null, 2))
+            .then(saved => { if (saved) showToast(`Backup exported: ${filename}`); })
+            .catch(err => {
+                console.error(err);
+                showToast("❌ Couldn't export the backup.", true);
+            });
     }
 
     // Keeps only well-formed records from an imported backup, coercing
@@ -324,8 +317,8 @@
 
     function clearAllData() {
         if (!confirm("Delete ALL timers and ALL history?")) return;
-        localStorage.removeItem("timers");
-        localStorage.removeItem("history");
+        removeItem("timers");
+        removeItem("history");
         timers = [];
         history = [];
         renderTimers();
@@ -443,43 +436,10 @@
         renderTimers();
     }
 
-    // Keep the screen awake while any timer is running. The browser drops the
-    // lock whenever the page is hidden, so it's re-requested on return.
-    let wakeLock = null;
-    let wakeLockPending = false;
-
-    function wakeLockWanted() {
-        return timers.some(t => t.isActive) && document.visibilityState === "visible";
-    }
-
-    async function syncWakeLock() {
-        if (!("wakeLock" in navigator) || wakeLockPending) return;
-
-        if (wakeLockWanted() && !wakeLock) {
-            wakeLockPending = true;
-            try {
-                const lock = await navigator.wakeLock.request("screen");
-                lock.addEventListener("release", () => { if (wakeLock === lock) wakeLock = null; });
-                wakeLock = lock;
-            } catch (err) {
-                // e.g. battery saver is on; the timers still work without it
-                console.warn("Wake lock unavailable:", err);
-            } finally {
-                wakeLockPending = false;
-            }
-            // Timers may have stopped while we were waiting
-            if (!wakeLockWanted()) syncWakeLock();
-        } else if (!wakeLockWanted() && wakeLock) {
-            const lock = wakeLock;
-            wakeLock = null;
-            lock.release();
-        }
-    }
-
-    document.addEventListener("visibilitychange", syncWakeLock);
-
     function renderTimers() {
-        syncWakeLock();
+        // Keep the screen on while any timer is running
+        setKeepAwake(timers.some(t => t.isActive));
+
         const container = document.getElementById("timers-container");
 
         // Remember open "add time" forms so a re-render (e.g. from another
@@ -555,7 +515,7 @@
     // handlers with IDs pasted into JavaScript strings.
     document.addEventListener("click", event => {
         const button = event.target.closest("[data-action]");
-        if (!button) return;
+        if (!button || !ready) return;
         const id = button.closest(".timer-card")?.dataset.id;
 
         switch (button.dataset.action) {
@@ -570,6 +530,7 @@
 
     document.addEventListener("submit", event => {
         event.preventDefault();
+        if (!ready) return;
         const form = event.target;
         if (form.id === "add-form") {
             createTimer();
@@ -585,11 +546,25 @@
         if (form) toggleEdit(form.closest(".timer-card").dataset.id, false);
     });
 
-    document.getElementById("import-file").addEventListener("change", importData);
+    const importInput = document.getElementById("import-file");
+    importInput.addEventListener("change", importData);
+    // Android's file picker often labels .json files as generic data and
+    // greys them out, so let the app's picker show every file.
+    if (isNativeApp) importInput.removeAttribute("accept");
 
-    setInterval(updateTimers, 100);
-    renderTimers();
-    checkStorageHealth();
+    initStorage()
+        .then(() => {
+            timers = loadState("timers");
+            history = loadState("history");
+            ready = true;
+            renderTimers();
+            setInterval(updateTimers, 100);
+            checkStorageHealth();
+        })
+        .catch(err => {
+            console.error(err);
+            showToast("❌ Couldn't load your saved data.", true);
+        });
 </script>
 </body>
 </html>
