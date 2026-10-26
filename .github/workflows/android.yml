@@ -1,0 +1,74 @@
+# Builds the Android app (Capacitor) from the same files GitHub Pages serves.
+# Download the APK from the run's "Artifacts" section.
+#
+# Signing: add these repository secrets so every build is signed with the
+# same key. Android refuses to install an update signed with a different key,
+# and uninstalling to get around that deletes the app's data.
+#   ANDROID_KEYSTORE_BASE64   base64 of your .jks keystore file
+#   ANDROID_KEYSTORE_PASSWORD
+#   ANDROID_KEY_ALIAS
+#   ANDROID_KEY_PASSWORD
+# Without them the workflow still builds, but with a throwaway debug key.
+name: Android app
+
+on:
+  push:
+    branches: [static-app]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Capacitor 8 needs JDK 21
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - run: npm ci
+
+      - name: Generate Android project
+        run: npm run android:add
+        env:
+          VERSION_CODE: ${{ github.run_number }}
+
+      - name: Build APK
+        working-directory: android
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          mkdir -p ../dist
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            ./gradlew --no-daemon assembleRelease \
+              -Pandroid.injected.signing.store.file="$RUNNER_TEMP/release.jks" \
+              -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
+              -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+              -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
+            cp app/build/outputs/apk/release/app-release.apk ../dist/my-timer.apk
+          else
+            echo "::warning::No signing secrets set, so this APK uses a throwaway debug key. It can't be installed as an update over a build signed with a different key. See the comment at the top of android.yml."
+            ./gradlew --no-daemon assembleDebug
+            cp app/build/outputs/apk/debug/app-debug.apk ../dist/my-timer-debug.apk
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: my-timer-android-${{ github.run_number }}
+          path: dist/*.apk
+          if-no-files-found: error

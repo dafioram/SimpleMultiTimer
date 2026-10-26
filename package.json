@@ -1,0 +1,22 @@
+{
+  "name": "simple-multi-timer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Multi-activity timer: a PWA on GitHub Pages and an Android app via Capacitor.",
+  "scripts": {
+    "build": "node scripts/build-web.mjs",
+    "android:add": "npm run build && cap add android && node scripts/prepare-android.mjs",
+    "android:sync": "npm run build && cap sync android"
+  },
+  "dependencies": {
+    "@capacitor-community/keep-awake": "8.0.1",
+    "@capacitor/android": "8.5.3",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/filesystem": "8.1.5",
+    "@capacitor/preferences": "8.0.1",
+    "@capacitor/share": "8.0.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.3"
+  }
+}

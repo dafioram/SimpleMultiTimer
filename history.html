@@ -94,7 +94,7 @@
 
     <script src="common.js"></script>
     <script>
-        let history = loadState('history');
+        let history = [];
 
         // Pick up changes made in another tab (e.g. a timer stopped on the main page)
         onStoredDataChange(() => {
@@ -121,7 +121,7 @@
             // Re-read first so we never write back a stale copy
             const updated = loadState('history').filter(h => h.id !== logId);
             try {
-                localStorage.setItem('history', JSON.stringify(updated));
+                writeItem('history', JSON.stringify(updated));
             } catch (err) {
                 console.error(err);
                 showToast("❌ Couldn't delete — storage error.", true);
@@ -155,7 +155,15 @@
             if (button) deleteLog(button.dataset.id);
         });
 
-        renderHistory();
+        initStorage()
+            .then(() => {
+                history = loadState('history');
+                renderHistory();
+            })
+            .catch(err => {
+                console.error(err);
+                showToast("❌ Couldn't load your saved data.", true);
+            });
     </script>
 </body>
 </html>
