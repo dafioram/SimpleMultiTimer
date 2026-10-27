@@ -18,22 +18,27 @@
         * { box-sizing: border-box; }
         body { margin: 0; padding: 20px; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 900px; margin-inline: auto; }
 
-        nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
-        h1 { margin: 0; color: #fff; font-size: 1.8rem; }
-        .header-right { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
-        .header-right a { color: var(--accent); text-decoration: none; font-weight: bold; margin-right: 5px; }
+        nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px; }
+        h1 { margin: 0; color: #fff; font-size: 1.3rem; }
+        .header-right { display: flex; align-items: center; gap: 4px; }
+        .header-icon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 10px; color: #bbb; font-size: 20px; text-decoration: none; cursor: pointer; }
+        .header-icon:hover { background: #2c2c2c; }
 
-        .btn-clear { background: #4b1f24; color: #ff9aa8; border: 1px solid var(--danger); padding: 8px 12px; border-radius: 8px; cursor: pointer; }
+        /* Dropdown menus (header ⋮ and each card's ⋮) */
+        .menu { position: relative; }
+        .menu > summary { list-style: none; }
+        .menu > summary::-webkit-details-marker { display: none; }
+        .menu-panel { position: absolute; right: 0; top: calc(100% + 4px); z-index: 10; min-width: 170px; background: #2c2c2c; border: 1px solid #444; border-radius: 10px; padding: 6px; box-shadow: 0 6px 18px rgba(0,0,0,.5); display: flex; flex-direction: column; }
+        .menu-panel button { background: none; color: var(--text); text-align: left; padding: 12px; font-size: 15px; border-radius: 6px; }
+        .menu-panel button:hover { background: #383838; }
+        .menu-panel button.danger { color: #ff9aa8; }
 
-        .btn-io { background: #2c2c2c; color: var(--text); border: 1px solid #444; padding: 8px 12px; border-radius: 8px; cursor: pointer; transition: 0.2s; font-weight: bold; }
-        .btn-io:hover { border-color: var(--accent); color: var(--accent); }
-
-        .add-form { display: flex; gap: 10px; margin: 0 0 20px; }
+        .add-form { display: flex; gap: 8px; margin: 0 0 12px; }
 
         .add-form input[type="text"] {
             flex-grow: 1;
-            padding: 15px;
-            border-radius: 8px;
+            padding: 12px 14px;
+            border-radius: 10px;
             border: none;
             font-size: 16px;
             background: #2c2c2c;
@@ -44,8 +49,8 @@
         button.add-btn {
             background-color: #bb86fc;
             border: none;
-            padding: 5px 20px;
-            border-radius: 8px;
+            padding: 5px 16px;
+            border-radius: 10px;
             color: #000;
             font-weight: bold;
             font-size: 26px;
@@ -87,21 +92,24 @@
             border-left-color: var(--danger);
         }
 
-        .timer-card { background: var(--card-bg); border-left: 6px solid #333; border-radius: 12px; padding: 18px; margin-bottom: 15px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; }
+        /* One compact row per timer: name and time on the left, actions on the right */
+        .timer-card { background: var(--card-bg); border-left: 5px solid #333; border-radius: 12px; padding: 10px 6px 10px 14px; margin-bottom: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
         .timer-card.running { background: #1b2e23; border-left-color: #00e676; }
 
-        .timer-info { flex: 1; }
-        .timer-name { display: block; color: var(--accent); font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; overflow-wrap: anywhere; }
-        .time-row { display: flex; align-items: center; gap: 10px; }
-        .time-display { font-family: monospace; font-size: 1.8rem; font-weight: bold; color: white; }
+        .section-label { margin: 14px 2px 6px; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: #8a8a8a; }
+        .section-label:first-child { margin-top: 4px; }
 
-        .controls { display: flex; align-items: center; gap: 10px; }
+        .timer-info { flex: 1; min-width: 0; }
+        .timer-name { display: block; color: var(--accent); font-size: calc(0.95rem + 1pt); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .time-display { display: block; font-family: monospace; font-size: 1.45rem; font-weight: bold; color: white; line-height: 1.25; }
+
         button { cursor: pointer; border: none; border-radius: 8px; font-weight: bold; transition: .2s; }
-        .btn { width: 90px; padding: 12px 0; font-size: 15px; }
+        .btn { width: 76px; height: 44px; font-size: 15px; border-radius: 10px; }
         .btn-start { background: var(--success); color: black; }
         .btn-stop { background: var(--danger); color: black; }
-        .icon-btn { background: none; color: #666; font-size: 22px; padding: 5px 8px; }
+        .icon-btn { background: none; color: #666; font-size: 20px; width: 36px; height: 44px; padding: 0; display: grid; place-items: center; }
         .icon-btn:hover { color: var(--accent); }
+        .card-menu > summary { cursor: pointer; }
 
         .edit-form { display: none; width: 100%; margin: 12px 0 0; align-items: center; gap: 8px; }
         .edit-form.open { display: flex; }
@@ -119,10 +127,8 @@
             margin-bottom: 20px;
         }
 
-        @media(max-width: 700px) {
-            .timer-card { gap: 10px; }
-            .timer-info { min-width: 200px; }
-            .controls { gap: 5px; }
+        @media(max-width: 480px) {
+            body { padding: 12px 12px 20px; }
         }
     </style>
 </head>
@@ -131,11 +137,16 @@
 <nav>
     <h1>Activity Tracker</h1>
     <div class="header-right">
-        <a href="history.html">📜 View History</a>
-        <button type="button" class="btn-io" data-action="export">📤 Export</button>
-        <button type="button" class="btn-io" data-action="import">📥 Import</button>
+        <a href="history.html" class="header-icon" title="View history" aria-label="View history">📜</a>
+        <details class="menu">
+            <summary class="header-icon" title="More" aria-label="More options">⋮</summary>
+            <div class="menu-panel">
+                <button type="button" data-action="export">📤 Export</button>
+                <button type="button" data-action="import">📥 Import</button>
+                <button type="button" class="danger" data-action="clear-all">Clear All Data</button>
+            </div>
+        </details>
         <input type="file" id="import-file" accept=".json,application/json" hidden>
-        <button type="button" class="btn-clear" data-action="clear-all">Clear All Data</button>
     </div>
 </nav>
 
@@ -467,24 +478,25 @@
             return (b.lastRun || 0) - (a.lastRun || 0);
         });
 
-        container.innerHTML = sortedTimers.map(timer => {
+        const card = timer => {
             const name = escapeHtml(timer.name);
             return `
                 <div class="timer-card ${timer.isActive ? 'running' : ''}" data-id="${escapeHtml(timer.id)}">
                     <div class="timer-info">
                         <span class="timer-name">${name}</span>
-                        <div class="time-row">
-                            <span class="time-display">${formatTime(getDisplayTime(timer))}</span>
-                            ${!timer.isActive ? `<button type="button" class="icon-btn" data-action="edit" title="Add time" aria-label="Add time to ${name}">✎</button>` : ''}
-                        </div>
+                        <span class="time-display">${formatTime(getDisplayTime(timer))}</span>
                     </div>
 
-                    <div class="controls">
-                        <button type="button" class="btn ${timer.isActive ? "btn-stop" : "btn-start"}" data-action="toggle">
-                            ${timer.isActive ? "Stop" : "Start"}
-                        </button>
-                        <button type="button" class="icon-btn" data-action="delete" title="Delete" aria-label="Delete ${name}">×</button>
-                    </div>
+                    ${!timer.isActive ? `<button type="button" class="icon-btn" data-action="edit" title="Add time" aria-label="Add time to ${name}">✎</button>` : ''}
+                    <button type="button" class="btn ${timer.isActive ? "btn-stop" : "btn-start"}" data-action="toggle">
+                        ${timer.isActive ? "Stop" : "Start"}
+                    </button>
+                    <details class="menu card-menu">
+                        <summary class="icon-btn" title="More" aria-label="More options for ${name}">⋮</summary>
+                        <div class="menu-panel">
+                            <button type="button" class="danger" data-action="delete">Delete</button>
+                        </div>
+                    </details>
 
                     <form class="edit-form">
                         <input name="amount" placeholder="30, 1:30, 1:30:00" autocomplete="off" enterkeyhint="done" aria-label="Time to add">
@@ -493,7 +505,15 @@
                     </form>
                 </div>
             `;
-        }).join("");
+        };
+
+        // Running timers get their own section at the top
+        const running = sortedTimers.filter(t => t.isActive);
+        const stopped = sortedTimers.filter(t => !t.isActive);
+        container.innerHTML = running.length
+            ? `<div class="section-label">Running</div>${running.map(card).join("")}` +
+              (stopped.length ? `<div class="section-label">Recent</div>${stopped.map(card).join("")}` : "")
+            : stopped.map(card).join("");
 
         openForms.forEach((state, id) => {
             const form = findCard(id)?.querySelector(".edit-form");
@@ -514,6 +534,11 @@
     // One set of listeners for everything, instead of inline onclick
     // handlers with IDs pasted into JavaScript strings.
     document.addEventListener("click", event => {
+        // Close any open menu unless the click was inside it (an item click closes it too)
+        document.querySelectorAll("details.menu[open]").forEach(menu => {
+            if (!menu.contains(event.target) || event.target.closest(".menu-panel")) menu.open = false;
+        });
+
         const button = event.target.closest("[data-action]");
         if (!button || !ready) return;
         const id = button.closest(".timer-card")?.dataset.id;
@@ -542,6 +567,7 @@
     // Escape closes an open "add time" form
     document.addEventListener("keydown", event => {
         if (event.key !== "Escape") return;
+        document.querySelectorAll("details.menu[open]").forEach(menu => { menu.open = false; });
         const form = event.target.closest?.(".edit-form.open");
         if (form) toggleEdit(form.closest(".timer-card").dataset.id, false);
     });
