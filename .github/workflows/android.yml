@@ -1,5 +1,11 @@
 # Builds the Android app (Capacitor) from the same files GitHub Pages serves.
-# Download the APK from the run's "Artifacts" section.
+#
+# Every push to static-app and every pull request: the APK is in the run's
+# "Artifacts" section.
+#
+# Releases: pushing a tag like v1.2.0 (or publishing a GitHub release with a
+# new v1.2.0 tag, which pushes the tag) builds a signed APK with app version
+# 1.2.0 and attaches it to that release, creating the release if needed.
 #
 # Signing: add these repository secrets so every build is signed with the
 # same key. Android refuses to install an update signed with a different key,
@@ -8,12 +14,14 @@
 #   ANDROID_KEYSTORE_PASSWORD
 #   ANDROID_KEY_ALIAS
 #   ANDROID_KEY_PASSWORD
-# Without them the workflow still builds, but with a throwaway debug key.
+# Without them, branch and PR builds use a throwaway debug key, and release
+# builds fail rather than publish an APK that can't update.
 name: Android app
 
 on:
   push:
     branches: [static-app]
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
@@ -39,6 +47,13 @@ jobs:
 
       - run: npm ci
 
+      # On a release tag, the app's version is the tag without the "v"
+      - name: Set version
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            echo "VERSION_NAME=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          fi
+
       - name: Generate Android project
         run: npm run android:add
         env:
@@ -61,6 +76,9 @@ jobs:
               -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
               -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
             cp app/build/outputs/apk/release/app-release.apk ../dist/my-timer.apk
+          elif [ "$GITHUB_REF_TYPE" = tag ]; then
+            echo "::error::Release builds need the signing secrets. See the comment at the top of android.yml."
+            exit 1
           else
             echo "::warning::No signing secrets set, so this APK uses a throwaway debug key. It can't be installed as an update over a build signed with a different key. See the comment at the top of android.yml."
             ./gradlew --no-daemon assembleDebug
@@ -72,3 +90,29 @@ jobs:
           name: my-timer-android-${{ github.run_number }}
           path: dist/*.apk
           if-no-files-found: error
+
+  # Attaches the signed APK to the GitHub release for the tag
+  release:
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: my-timer-android-${{ github.run_number }}
+
+      - name: Attach APK to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          apk="Timers-${TAG#v}.apk"
+          mv my-timer.apk "$apk"
+          # Reuse the release if one was published for this tag, else create it
+          if ! gh release view "$TAG" > /dev/null 2>&1; then
+            gh release create "$TAG" --title "$TAG" --generate-notes --verify-tag
+          fi
+          gh release upload "$TAG" "$apk" --clobber
