@@ -45,6 +45,22 @@ Back up `my-timer.jks` and its password somewhere safe. Without the
 secrets the workflow still builds, but with a throwaway debug key that
 changes every run.
 
+### Releases
+
+To publish a version, either:
+
+- **On GitHub:** Releases → *Draft a new release* → create a new tag such
+  as `v1.2.0` on `static-app` → *Publish release*, or
+- **With git:** `git tag v1.2.0 && git push origin v1.2.0`.
+
+The workflow then builds a signed APK whose app version is `1.2.0`, and
+attaches it to that release as `Timers-1.2.0.apk`, creating the release
+with generated notes if you pushed only a tag. Release builds need the
+signing secrets above and fail without them.
+
+Bump `version` in `package.json` to match, so in-between builds report
+`1.2.0.<build number>`.
+
 ### Building locally
 
 Needs Node 22, JDK 21 and the Android SDK (e.g. via Android Studio):

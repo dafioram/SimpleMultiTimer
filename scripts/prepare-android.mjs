@@ -33,12 +33,15 @@ edit(`${res}/values/styles.xml`, [[
 ]]);
 
 // Version: Android only installs an update over the existing app if the
-// version code doesn't go down, so CI passes its run number.
+// version code doesn't go down, so CI passes its run number. Release builds
+// pass VERSION_NAME (the tag without its "v"); other builds show the
+// package.json version plus the build number.
 const versionCode = Number(process.env.VERSION_CODE || 1);
 const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+const versionName = process.env.VERSION_NAME || `${pkg.version}.${versionCode}`;
 edit("android/app/build.gradle", [
     ["versionCode 1", `versionCode ${versionCode}`],
-    [`versionName "1.0"`, `versionName "${pkg.version}.${versionCode}"`]
+    [`versionName "1.0"`, `versionName "${versionName}"`]
 ]);
 
-console.log(`Android project prepared (version ${pkg.version}.${versionCode}, code ${versionCode})`);
+console.log(`Android project prepared (version ${versionName}, code ${versionCode})`);
